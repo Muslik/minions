@@ -14,7 +14,7 @@ const ticketKey = computed(() => {
   return match?.[1] ?? url
 })
 
-const summary = computed(() => props.run.context.jiraIssue?.summary ?? 'Loading...')
+const summary = computed(() => props.run.context.jiraIssue?.summary)
 
 const timeAgo = computed(() => {
   const diff = Date.now() - new Date(props.run.createdAt).getTime()
@@ -38,7 +38,7 @@ const timeAgo = computed(() => {
           {{ STATUS_LABELS[run.status] }}
         </span>
       </div>
-      <p class="text-sm text-[hsl(var(--foreground))] line-clamp-2 mb-2">{{ summary }}</p>
+      <p v-if="summary" class="text-sm text-[hsl(var(--foreground))] line-clamp-2 mb-2">{{ summary }}</p>
       <p class="text-xs text-[hsl(var(--muted-foreground))]">{{ timeAgo }}</p>
     </div>
   </RouterLink>
