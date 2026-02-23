@@ -15,6 +15,8 @@ const STATUS_LABEL: Record<string, string> = {
 export class TelegramChannel {
   private baseUrl: string;
   private chatId: string;
+  /** runId → TG message_id for edit-in-place */
+  private messageIds = new Map<string, number>();
 
   constructor(botToken: string, chatId: string) {
     this.baseUrl = `${TG_API}${botToken}`;
@@ -24,37 +26,78 @@ export class TelegramChannel {
   async send(payload: NotifyPayload): Promise<void> {
     const text = formatMessage(payload);
 
-    const body: Record<string, unknown> = {
-      chat_id: this.chatId,
-      text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    };
+    const replyMarkup = payload.actions?.length
+      ? {
+          inline_keyboard: [
+            payload.actions.map((a) => ({
+              text: a.label,
+              callback_data: buildCallbackData(a, payload.runId),
+            })),
+          ],
+        }
+      : undefined;
 
-    if (payload.actions?.length) {
-      body["reply_markup"] = {
-        inline_keyboard: [
-          payload.actions.map((a) => ({
-            text: a.label,
-            callback_data: buildCallbackData(a, payload.runId),
-          })),
-        ],
-      };
-    }
+    const existing = this.messageIds.get(payload.runId);
 
     try {
-      const res = await fetch(`${this.baseUrl}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      if (existing) {
+        // Edit existing message in-place
+        const body: Record<string, unknown> = {
+          chat_id: this.chatId,
+          message_id: existing,
+          text,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        };
+        if (replyMarkup) {
+          body["reply_markup"] = replyMarkup;
+        } else {
+          body["reply_markup"] = { inline_keyboard: [] };
+        }
 
-      if (!res.ok) {
-        const respText = await res.text().catch(() => "");
-        console.error(`[telegram] sendMessage returned ${res.status}: ${respText}`);
+        const res = await fetch(`${this.baseUrl}/editMessageText`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const respText = await res.text().catch(() => "");
+          console.error(`[telegram] editMessageText returned ${res.status}: ${respText}`);
+        }
+      } else {
+        // Send new message, remember message_id
+        const body: Record<string, unknown> = {
+          chat_id: this.chatId,
+          text,
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+        };
+        if (replyMarkup) body["reply_markup"] = replyMarkup;
+
+        const res = await fetch(`${this.baseUrl}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          const data = (await res.json()) as { result?: { message_id?: number } };
+          if (data.result?.message_id) {
+            this.messageIds.set(payload.runId, data.result.message_id);
+          }
+        } else {
+          const respText = await res.text().catch(() => "");
+          console.error(`[telegram] sendMessage returned ${res.status}: ${respText}`);
+        }
       }
     } catch (err) {
       console.error("[telegram] Failed to send:", err);
+    }
+
+    // Cleanup finished runs from map
+    if (payload.status === "done" || payload.status === "failed" || payload.status === "escalated") {
+      this.messageIds.delete(payload.runId);
     }
   }
 }
