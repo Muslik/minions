@@ -22,6 +22,8 @@ export function createReviewerNode(deps: NodeDeps) {
   ): Promise<Partial<CodingState>> {
     const { runId, worktreePath } = state.context;
 
+    deps.syncStatus(runId, RunStatus.REVIEWING);
+
     const diff = worktreePath ? getDiff(worktreePath) : "";
 
     const reviewContext: RunContext = {

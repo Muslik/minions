@@ -13,6 +13,8 @@ export function createHydrateNode(deps: NodeDeps) {
     const { ticketUrl, chatId, requesterId } = state.payload;
     const runId = state.runId;
 
+    deps.syncStatus(runId, RunStatus.HYDRATING);
+
     await deps.vpn.up();
 
     const jiraIssue = await deps.jira.fetchIssue(ticketUrl);

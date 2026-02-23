@@ -8,6 +8,8 @@ export function createClarifyNode(deps: NodeDeps) {
   ): Promise<Partial<CodingState>> {
     const { runId, worktreePath } = state.context;
 
+    deps.syncStatus(runId, RunStatus.CLARIFYING);
+
     const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
 
     const output = await deps.agent.runAgent(

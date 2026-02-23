@@ -96,12 +96,14 @@ const mockDeps: NodeDeps = {
   },
   agent: {
     runAgent: async (role, _worktreePath, _ctx, _extra, _onEvent) => {
+      if (role === "clarify") return "[]";
       if (role === "architect") return "# Plan\n- Fix the bug";
       if (role === "coder") return "Code written";
       if (role === "reviewer") return "APPROVED";
       return "";
     },
   },
+  syncStatus: (_runId, _status) => {},
   emitEvent: (_runId, _type, _data) => {},
   docker: {
     withContainer: async (_profile, _binds, fn) => fn({} as unknown),

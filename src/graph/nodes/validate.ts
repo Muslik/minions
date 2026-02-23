@@ -7,7 +7,9 @@ export function createValidateNode(deps: NodeDeps) {
   return async function validateNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
-    const { worktreePath, validationCommands } = state.context;
+    const { worktreePath, validationCommands, runId } = state.context;
+
+    deps.syncStatus(runId, RunStatus.VALIDATING);
 
     if (!validationCommands || validationCommands.length === 0) {
       return { status: RunStatus.REVIEWING, error: undefined };

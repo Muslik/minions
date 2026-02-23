@@ -35,6 +35,9 @@ export function launchRun(
       if (finalState.plan) {
         runStore.updatePlan(runId, finalState.plan);
       }
+      if (finalState.questions) {
+        runStore.updateQuestions(runId, finalState.questions);
+      }
     })
     .catch(async (err: unknown) => {
       console.error(`Graph run ${runId} failed:`, err);

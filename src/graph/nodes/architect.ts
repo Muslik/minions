@@ -8,6 +8,8 @@ export function createArchitectNode(deps: NodeDeps) {
   ): Promise<Partial<CodingState>> {
     const { runId, worktreePath } = state.context;
 
+    deps.syncStatus(runId, RunStatus.PLANNING);
+
     const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
 
     const extraVars: Record<string, string> = {};

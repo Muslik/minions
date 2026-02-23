@@ -8,6 +8,8 @@ export function createCoderNode(deps: NodeDeps) {
   ): Promise<Partial<CodingState>> {
     const { worktreePath, runId, chatId, requesterId, ticketUrl, jiraIssue } = state.context;
 
+    deps.syncStatus(runId, RunStatus.CODING);
+
     await deps.notifier.notify({
       runId,
       status: "coding",

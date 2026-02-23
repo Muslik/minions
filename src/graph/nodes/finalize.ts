@@ -7,12 +7,15 @@ export function createFinalizeNode(deps: NodeDeps) {
     state: CodingState
   ): Promise<Partial<CodingState>> {
     const {
+      runId,
       worktreePath,
       targetBranch,
       jiraIssue,
       projectKey,
       repoSlug,
     } = state.context;
+
+    deps.syncStatus(runId, RunStatus.FINALIZING);
 
     const branch = `minions/${jiraIssue?.key ?? state.runId}`;
 
