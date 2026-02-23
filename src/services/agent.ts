@@ -49,6 +49,7 @@ export class AgentFactory {
       apiKey,
       useResponsesApi: true,
       streaming: true,
+      zdrEnabled: true,
       modelKwargs: { instructions, ...(ROLE_CONFIG[role].reasoning && { reasoning: { effort: ROLE_CONFIG[role].reasoning } }) },
       configuration: {
         baseURL: this.baseUrl,
