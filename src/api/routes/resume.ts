@@ -34,10 +34,20 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
 
     const { action, comment } = parsed.data;
 
-    // Cancel: update status immediately so UI reflects it
+    // Cancel: update status immediately, fire graph for cleanup only
     if (action === "cancel") {
       runStore.updateStatus(id, RunStatus.FAILED);
       runStore.addEvent(id, "status", { message: "Cancelled by user" });
+
+      graph
+        .invoke(new Command({ resume: { action, comment } }), {
+          configurable: { thread_id: id },
+        })
+        .catch((err: unknown) => {
+          console.error(`Graph cancel ${id} failed:`, err);
+        });
+
+      return c.json({ runId: id, action });
     }
 
     graph
