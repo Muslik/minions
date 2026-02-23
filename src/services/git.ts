@@ -94,7 +94,8 @@ export function getHeadCommit(worktreePath: string): string {
 export function finalizeAndPush(
   worktreePath: string,
   branch: string,
-  squash = false
+  squash = false,
+  targetBranch = "main"
 ): void {
   run("git add -A", worktreePath);
 
@@ -111,16 +112,13 @@ export function finalizeAndPush(
     }
   })();
 
-  if (!hasChanges) return;
+  if (hasChanges) {
+    run(`git commit -m "feat: ${branch}"`, worktreePath);
+  }
 
   if (squash) {
-    const firstCommit = run(
-      "git rev-list --max-parents=0 HEAD",
-      worktreePath
-    );
-    run(`git reset --soft ${firstCommit}`, worktreePath);
-    run(`git commit -m "squash: ${branch}"`, worktreePath);
-  } else {
+    const mergeBase = run(`git merge-base ${targetBranch} HEAD`, worktreePath);
+    run(`git reset --soft ${mergeBase}`, worktreePath);
     run(`git commit -m "feat: ${branch}"`, worktreePath);
   }
 

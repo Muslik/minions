@@ -19,7 +19,7 @@ export function createFinalizeNode(deps: NodeDeps) {
 
     const branch = `minions/${jiraIssue?.key ?? state.runId}`;
 
-    deps.git.finalizeAndPush(worktreePath ?? "", branch, true);
+    deps.git.finalizeAndPush(worktreePath ?? "", branch, true, targetBranch ?? "main");
 
     const commitHash = deps.git.getHeadCommit(worktreePath ?? "");
 

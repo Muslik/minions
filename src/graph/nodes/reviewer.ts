@@ -4,15 +4,30 @@ import type { RunContext } from "../../domain/types.js";
 import type { CodingState } from "../../domain/state.js";
 import type { NodeDeps } from "./deps.js";
 
-function getDiff(worktreePath: string): string {
+function getDiff(worktreePath: string, targetBranch = "main"): string {
+  // First, stage any unstaged changes so they appear in diff
   try {
-    return execSync("git diff HEAD", {
+    execSync("git add -A", { cwd: worktreePath, stdio: ["pipe", "pipe", "pipe"] });
+  } catch { /* ignore */ }
+
+  // Diff all changes from target branch (includes committed + staged)
+  try {
+    return execSync(`git diff ${targetBranch}...HEAD`, {
       cwd: worktreePath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
   } catch {
-    return "";
+    // Fallback: diff staged + unstaged vs HEAD
+    try {
+      return execSync("git diff HEAD", {
+        cwd: worktreePath,
+        encoding: "utf-8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    } catch {
+      return "";
+    }
   }
 }
 
@@ -24,7 +39,7 @@ export function createReviewerNode(deps: NodeDeps) {
 
     deps.syncStatus(runId, RunStatus.REVIEWING);
 
-    const diff = worktreePath ? getDiff(worktreePath) : "";
+    const diff = worktreePath ? getDiff(worktreePath, state.context.targetBranch) : "";
 
     const reviewContext: RunContext = {
       runId,

@@ -25,7 +25,7 @@ export interface NodeDeps {
       targetBranch?: string
     ): string;
     removeWorktree(path: string): void;
-    finalizeAndPush(path: string, branch: string, squash?: boolean): void;
+    finalizeAndPush(path: string, branch: string, squash?: boolean, targetBranch?: string): void;
     getHeadCommit(worktreePath: string): string;
   };
   agent: {
