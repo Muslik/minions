@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { RunStatus } from "../../domain/types.js";
+import type { RunStatus } from "../../domain/types.js";
 import type { AppDeps } from "../server.js";
+import { launchRun } from "../../services/run-launcher.js";
 
 const CreateRunSchema = z.object({
   ticketUrl: z.string().url(),
@@ -29,41 +30,12 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
     }
 
     const { ticketUrl, chatId, requesterId } = parsed.data;
-    const runId = runStore.create({ ticketUrl, chatId, requesterId });
-
-    // Invoke graph in background - do not await
-    graph
-      .invoke(
-        {
-          runId,
-          payload: { ticketUrl, chatId, requesterId },
-          context: { runId, ticketUrl, chatId, requesterId },
-        },
-        { configurable: { thread_id: runId } }
-      )
-      .then((finalState) => {
-        appDeps.runStore.updateStatus(runId, finalState.status);
-        if (finalState.context) {
-          appDeps.runStore.updateContext(runId, finalState.context);
-        }
-        if (finalState.plan) {
-          appDeps.runStore.updatePlan(runId, finalState.plan);
-        }
-      })
-      .catch(async (err: unknown) => {
-        console.error(`Graph run ${runId} failed:`, err);
-        appDeps.runStore.updateStatus(runId, RunStatus.FAILED);
-        appDeps.runStore.addEvent(runId, "error", { message: String(err) });
-        await appDeps.deps.notifier.notify({
-          runId,
-          status: "failed",
-          message: String(err),
-          chatId,
-          requesterId,
-          ticketKey: ticketUrl.split("/").pop(),
-          ticketUrl,
-        });
-      });
+    const runId = launchRun(
+      { ticketUrl, chatId, requesterId },
+      runStore,
+      graph,
+      appDeps.deps
+    );
 
     return c.json({ runId }, 202);
   });

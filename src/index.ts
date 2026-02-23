@@ -8,6 +8,7 @@ import { createCheckpointer } from "./store/checkpoints.js";
 import { buildRuntime } from "./effect/runtime.js";
 import { compileCodingGraph } from "./graph/coding.js";
 import { createApp } from "./api/server.js";
+import { createBot } from "./bot/index.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -36,6 +37,16 @@ async function main(): Promise<void> {
   // Build Hono app
   const app = createApp({ runStore, graph, config, deps });
 
+  // Start Telegram bot
+  const bot = createBot(
+    {
+      botToken: config.notifier.telegram.botToken,
+      chatId: config.notifier.telegram.chatId,
+    },
+    { runStore, graph, nodeDeps: deps }
+  );
+  bot.start();
+
   // Start HTTP server
   const server = serve(
     {
@@ -53,6 +64,7 @@ async function main(): Promise<void> {
   // Graceful shutdown
   const shutdown = () => {
     console.log("Shutting down...");
+    bot.stop();
     cleanup();
     server.close(() => {
       console.log("Server closed.");
