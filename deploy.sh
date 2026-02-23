@@ -10,28 +10,19 @@ pnpm build
 echo "==> Building UI..."
 pnpm build:ui
 
-echo "==> Syncing files to $REMOTE..."
-rsync -azP --delete \
-  dist/ "$REMOTE:$REMOTE_DIR/dist/"
+echo "==> Packing and uploading..."
+tar czf /tmp/minions-deploy.tar.gz \
+  dist/ \
+  ui/dist/ \
+  ui/package.json \
+  config/ \
+  package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc
 
-rsync -azP --delete \
-  ui/dist/ "$REMOTE:$REMOTE_DIR/ui/dist/"
+scp /tmp/minions-deploy.tar.gz "$REMOTE:/tmp/"
 
-rsync -azP \
-  package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc \
-  ecosystem.config.cjs \
-  "$REMOTE:$REMOTE_DIR/"
+echo "==> Extracting on remote and restarting..."
+ssh "$REMOTE" "cd $REMOTE_DIR && tar xzf /tmp/minions-deploy.tar.gz && pnpm install --frozen-lockfile --prod && pm2 restart minions && rm /tmp/minions-deploy.tar.gz"
 
-rsync -azP \
-  ui/package.json "$REMOTE:$REMOTE_DIR/ui/"
-
-rsync -azP --delete \
-  config/ "$REMOTE:$REMOTE_DIR/config/"
-
-echo "==> Installing dependencies on remote..."
-ssh "$REMOTE" "cd $REMOTE_DIR && pnpm install --frozen-lockfile --prod"
-
-echo "==> Restarting PM2..."
-ssh "$REMOTE" "cd $REMOTE_DIR && pm2 restart minions"
+rm /tmp/minions-deploy.tar.gz
 
 echo "==> Done!"

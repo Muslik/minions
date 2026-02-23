@@ -8,7 +8,7 @@ export interface Column {
 
 export const COLUMNS: Column[] = [
   { key: 'queued', label: 'Queued', statuses: ['RECEIVED'] },
-  { key: 'working', label: 'Working', statuses: ['HYDRATING', 'PLANNING', 'CODING', 'VALIDATING', 'REVIEWING', 'FINALIZING'] },
+  { key: 'working', label: 'Working', statuses: ['HYDRATING', 'PLANNING', 'CODING', 'VALIDATING', 'REVIEWING', 'FINALIZING', 'WAITING_FOR_CI'] },
   { key: 'review', label: 'Awaiting Review', statuses: ['AWAITING_APPROVAL'] },
   { key: 'done', label: 'Done', statuses: ['DONE'] },
   { key: 'problem', label: 'Problem', statuses: ['FAILED', 'ESCALATED'] }
@@ -23,6 +23,7 @@ export const STATUS_COLORS: Record<RunStatus, string> = {
   VALIDATING: 'bg-purple-100 text-purple-700',
   REVIEWING: 'bg-cyan-100 text-cyan-700',
   FINALIZING: 'bg-teal-100 text-teal-700',
+  WAITING_FOR_CI: 'bg-yellow-100 text-yellow-700',
   DONE: 'bg-green-100 text-green-700',
   FAILED: 'bg-red-100 text-red-700',
   ESCALATED: 'bg-orange-100 text-orange-700'
@@ -37,6 +38,7 @@ export const STATUS_LABELS: Record<RunStatus, string> = {
   VALIDATING: 'Validating',
   REVIEWING: 'Reviewing',
   FINALIZING: 'Finalizing',
+  WAITING_FOR_CI: 'Waiting for CI',
   DONE: 'Done',
   FAILED: 'Failed',
   ESCALATED: 'Escalated'

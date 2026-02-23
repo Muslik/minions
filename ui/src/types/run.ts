@@ -7,6 +7,7 @@ export type RunStatus =
   | 'VALIDATING'
   | 'REVIEWING'
   | 'FINALIZING'
+  | 'WAITING_FOR_CI'
   | 'DONE'
   | 'FAILED'
   | 'ESCALATED'
