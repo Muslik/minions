@@ -16,9 +16,12 @@ export function createCleanupNode(deps: NodeDeps) {
       }
     }
 
-    const finalStatus =
-      state.status === RunStatus.ESCALATED ? RunStatus.ESCALATED : RunStatus.DONE;
-    const notifyStatus = state.status === RunStatus.ESCALATED ? "escalated" : "done";
+    const isTerminal = state.status === RunStatus.ESCALATED || state.status === RunStatus.FAILED;
+    const finalStatus = isTerminal ? state.status : RunStatus.DONE;
+    const notifyStatus =
+      state.status === RunStatus.ESCALATED ? "escalated"
+      : state.status === RunStatus.FAILED ? "cancelled"
+      : "done";
 
     const ciLabel =
       state.ciStatus === "SUCCESSFUL"

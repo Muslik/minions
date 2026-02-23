@@ -48,7 +48,7 @@ export function compileCodingGraph(
     .addConditionalEdges("await_approval", routeAfterApproval, {
       coder: "coder",
       architect: "architect",
-      __end__: END,
+      cleanup: "cleanup",
     })
     .addConditionalEdges("validate", routeAfterValidation, {
       reviewer: "reviewer",

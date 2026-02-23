@@ -50,13 +50,13 @@ describe("approval-routing: routeAfterApproval", () => {
     assert.equal(routeAfterApproval(state), "architect");
   });
 
-  it("routes to '__end__' when resumeAction is 'cancel'", () => {
+  it("routes to 'cleanup' when resumeAction is 'cancel'", () => {
     const state = makeState({ resumeAction: "cancel" });
-    assert.equal(routeAfterApproval(state), "__end__");
+    assert.equal(routeAfterApproval(state), "cleanup");
   });
 
-  it("routes to '__end__' when resumeAction is undefined", () => {
+  it("routes to 'cleanup' when resumeAction is undefined", () => {
     const state = makeState({ resumeAction: undefined });
-    assert.equal(routeAfterApproval(state), "__end__");
+    assert.equal(routeAfterApproval(state), "cleanup");
   });
 });

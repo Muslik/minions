@@ -1,4 +1,5 @@
 import { interrupt } from "@langchain/langgraph";
+import { RunStatus } from "../../domain/types.js";
 import type { CodingState } from "../../domain/state.js";
 import type { ResumeAction } from "../../domain/types.js";
 import type { NodeDeps } from "./deps.js";
@@ -34,6 +35,14 @@ export function createAwaitApprovalNode(deps: NodeDeps) {
     const resume = interrupt<{ plan: string | undefined }, ResumePayload>({
       plan: state.plan,
     });
+
+    if (resume.action === "cancel") {
+      return {
+        resumeAction: resume.action,
+        status: RunStatus.FAILED,
+        escalationReason: "Cancelled by user",
+      };
+    }
 
     return {
       resumeAction: resume.action,

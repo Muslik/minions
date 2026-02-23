@@ -5,10 +5,10 @@ import type { NodeDeps } from "../nodes/deps.js";
 
 export function routeAfterApproval(
   state: CodingState
-): "coder" | "architect" | "__end__" {
+): "coder" | "architect" | "cleanup" {
   if (state.resumeAction === "approve") return "coder";
   if (state.resumeAction === "revise") return "architect";
-  return "__end__";
+  return "cleanup";
 }
 
 export function routeAfterValidation(

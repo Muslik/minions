@@ -37,8 +37,15 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
       .invoke(new Command({ resume: { action, comment } }), {
         configurable: { thread_id: id },
       })
+      .then((finalState) => {
+        runStore.updateStatus(id, finalState.status);
+        if (finalState.context) runStore.updateContext(id, finalState.context);
+        if (finalState.plan) runStore.updatePlan(id, finalState.plan);
+      })
       .catch((err: unknown) => {
         console.error(`Graph resume ${id} failed:`, err);
+        runStore.updateStatus(id, "FAILED" as any);
+        runStore.addEvent(id, "error", { message: String(err) });
       });
 
     return c.json({ runId: id, action });
@@ -53,8 +60,12 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
       .invoke(new Command({ resume: { action: "cancel", comment: "Cancelled via API" } }), {
         configurable: { thread_id: id },
       })
+      .then((finalState) => {
+        runStore.updateStatus(id, finalState.status);
+      })
       .catch((err: unknown) => {
         console.error(`Graph cancel ${id} failed:`, err);
+        runStore.updateStatus(id, "FAILED" as any);
       });
 
     return c.json({ runId: id, action: "cancel" });
