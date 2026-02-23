@@ -5,6 +5,7 @@ import { DockerService } from "../services/docker.js";
 import { JiraService } from "../services/jira.js";
 import { BitbucketService } from "../services/bitbucket.js";
 import { NotifierService } from "../services/notifier.js";
+import { TelegramChannel } from "../services/telegram.js";
 import { OAuthTokenProvider } from "../services/auth.js";
 import { AgentFactory } from "../services/agent.js";
 import { VpnService } from "../services/vpn.js";
@@ -32,7 +33,8 @@ export function buildRuntime(config: OrchestratorConfig): {
   const docker = new DockerService(config.docker);
   const jira = new JiraService(config.jira);
   const bitbucket = new BitbucketService(config.bitbucket);
-  const notifier = new NotifierService(config.notifier);
+  const telegramChannel = new TelegramChannel(config.notifier.telegram.botToken);
+  const notifier = new NotifierService([telegramChannel]);
 
   const authDir = config.agent.authDir.startsWith("~")
     ? config.agent.authDir.replace("~", process.env["HOME"] ?? "/root")

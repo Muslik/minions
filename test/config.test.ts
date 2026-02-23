@@ -38,8 +38,11 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   set("jira", "token", e["ORCH_JIRA_TOKEN"]);
   set("bitbucket", "baseUrl", e["ORCH_BITBUCKET_BASE_URL"]);
   set("bitbucket", "token", e["ORCH_BITBUCKET_TOKEN"]);
-  set("notifier", "webhookUrl", e["ORCH_NOTIFIER_WEBHOOK_URL"]);
-  set("notifier", "hmacSecret", e["ORCH_NOTIFIER_HMAC_SECRET"]);
+  if (e["ORCH_TELEGRAM_BOT_TOKEN"]) {
+    cfg["notifier"] ??= {};
+    (cfg["notifier"] as Record<string, unknown>)["telegram"] ??= {};
+    ((cfg["notifier"] as Record<string, unknown>)["telegram"] as Record<string, unknown>)["botToken"] = e["ORCH_TELEGRAM_BOT_TOKEN"];
+  }
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
 
@@ -88,8 +91,8 @@ bitbucket:
   token: "bb-token"
 
 notifier:
-  webhookUrl: "https://hooks.example.com/webhook"
-  hmacSecret: "hmac-secret"
+  telegram:
+    botToken: "test-bot-token"
 
 agent:
   model: "gpt-5.3-codex"
@@ -115,8 +118,8 @@ bitbucket:
   token: "bb-tok"
 
 notifier:
-  webhookUrl: "https://hooks.example.com"
-  hmacSecret: "secret"
+  telegram:
+    botToken: "test-token"
 
 agent: {}
 `;
@@ -135,7 +138,7 @@ describe("Config loading", () => {
     assert.equal(config.jira.baseUrl, "https://jira.example.com");
     assert.equal(config.jira.token, "jira-token");
     assert.equal(config.bitbucket.token, "bb-token");
-    assert.equal(config.notifier.webhookUrl, "https://hooks.example.com/webhook");
+    assert.equal(config.notifier.telegram.botToken, "test-bot-token");
     assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "/opt/codex");
   });
@@ -160,8 +163,8 @@ bitbucket:
   baseUrl: "https://bb.example.com"
   token: "tok"
 notifier:
-  webhookUrl: "https://hooks.example.com"
-  hmacSecret: "secret"
+  telegram:
+    botToken: "test-token"
 agent: {}
 `, "utf-8");
 
@@ -225,7 +228,7 @@ agent: {}
         token: "t",
       },
       bitbucket: { baseUrl: "https://bb.example.com", token: "t" },
-      notifier: { webhookUrl: "https://hooks.example.com", hmacSecret: "s" },
+      notifier: { telegram: { botToken: "t" } },
       agent: {},
     };
 

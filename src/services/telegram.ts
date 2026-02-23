@@ -1,0 +1,100 @@
+import type { NotifyPayload, NotifyAction } from "./notifier.js";
+
+const TG_API = "https://api.telegram.org/bot";
+const TG_MSG_LIMIT = 4096;
+
+const STATUS_LABEL: Record<string, string> = {
+  started: "🚀 Взята в работу",
+  awaiting_approval: "📋 План готов",
+  coding: "⚙️ Пишу код",
+  done: "✅ Готово",
+  escalated: "⚠️ Эскалация",
+  failed: "❌ Ошибка",
+};
+
+export class TelegramChannel {
+  private baseUrl: string;
+
+  constructor(botToken: string) {
+    this.baseUrl = `${TG_API}${botToken}`;
+  }
+
+  async send(payload: NotifyPayload): Promise<void> {
+    const text = formatMessage(payload);
+
+    const body: Record<string, unknown> = {
+      chat_id: payload.chatId,
+      text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+    };
+
+    if (payload.actions?.length) {
+      body["reply_markup"] = {
+        inline_keyboard: [
+          payload.actions.map((a) => ({
+            text: a.label,
+            callback_data: buildCallbackData(a, payload.runId),
+          })),
+        ],
+      };
+    }
+
+    try {
+      const res = await fetch(`${this.baseUrl}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const respText = await res.text().catch(() => "");
+        console.error(`[telegram] sendMessage returned ${res.status}: ${respText}`);
+      }
+    } catch (err) {
+      console.error("[telegram] Failed to send:", err);
+    }
+  }
+}
+
+function formatMessage(p: NotifyPayload): string {
+  const label = STATUS_LABEL[p.status] ?? p.status;
+  const ticket = p.ticketKey
+    ? p.ticketUrl
+      ? `<a href="${escHtml(p.ticketUrl)}">${escHtml(p.ticketKey)}</a>`
+      : `<b>${escHtml(p.ticketKey)}</b>`
+    : "";
+
+  const header = ticket ? `${label} — ${ticket}` : label;
+
+  const parts: string[] = [header];
+
+  if (p.status === "awaiting_approval") {
+    const plan = p.message || "(no plan)";
+    const maxPlan = TG_MSG_LIMIT - header.length - 60;
+    const truncated =
+      plan.length > maxPlan ? plan.slice(0, maxPlan) + "\n…(truncated)" : plan;
+    parts.push(`<pre>${escHtml(truncated)}</pre>`);
+  } else if (p.status === "done" && p.data && typeof p.data === "object" && "prUrl" in p.data) {
+    const prUrl = (p.data as { prUrl?: string }).prUrl;
+    if (prUrl) parts.push(`<a href="${escHtml(prUrl)}">Открыть PR</a>`);
+  } else if (p.message && p.status !== "started") {
+    parts.push(escHtml(p.message));
+  }
+
+  return parts.join("\n\n");
+}
+
+function buildCallbackData(action: NotifyAction, runId: string): string {
+  const act = action.body["action"];
+  if (act) return `mn:${act}:${runId}`;
+  if (action.endpoint.endsWith("/cancel")) return `mn:cancel:${runId}`;
+  return `mn:action:${runId}`;
+}
+
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}

@@ -21,8 +21,8 @@ bitbucket:
   token: ""
 
 notifier:
-  webhookUrl: "http://localhost:4000/webhook"
-  hmacSecret: "change-me"
+  telegram:
+    botToken: ""
 
 agent:
   model: "gpt-5.3-codex"

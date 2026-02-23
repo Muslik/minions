@@ -28,8 +28,12 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   set("confluence", "token", e["ORCH_CONFLUENCE_TOKEN"]);
   set("loop", "baseUrl", e["ORCH_LOOP_BASE_URL"]);
   set("loop", "token", e["ORCH_LOOP_TOKEN"]);
-  set("notifier", "webhookUrl", e["ORCH_NOTIFIER_WEBHOOK_URL"]);
-  set("notifier", "hmacSecret", e["ORCH_NOTIFIER_HMAC_SECRET"]);
+  // notifier.telegram — nested, handle manually
+  if (e["ORCH_TELEGRAM_BOT_TOKEN"]) {
+    cfg["notifier"] ??= {};
+    (cfg["notifier"] as Record<string, unknown>)["telegram"] ??= {};
+    ((cfg["notifier"] as Record<string, unknown>)["telegram"] as Record<string, unknown>)["botToken"] = e["ORCH_TELEGRAM_BOT_TOKEN"];
+  }
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
   set("agent", "baseUrl", e["ORCH_AGENT_BASE_URL"]);

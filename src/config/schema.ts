@@ -31,8 +31,9 @@ export const BitbucketConfigSchema = z.object({
 });
 
 export const NotifierConfigSchema = z.object({
-  webhookUrl: z.string(),
-  hmacSecret: z.string(),
+  telegram: z.object({
+    botToken: z.string(),
+  }),
 });
 
 export const ConfluenceConfigSchema = z
