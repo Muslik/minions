@@ -1,61 +1,104 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import type { RunEvent } from '../../types/run'
+import { STATUS_COLORS, STATUS_LABELS } from '../../lib/status'
+import type { RunStatus } from '../../types/run'
 
 const props = defineProps<{ events: RunEvent[] }>()
 
-const container = ref<HTMLElement>()
-const autoScroll = ref(true)
+interface ToolEntry {
+  id: number
+  time: string
+  kind: 'tool_call' | 'tool_result' | 'agent_text' | 'error' | 'other'
+  tool?: string
+  detail?: string
+  text?: string
+}
 
-const entries = computed(() => {
-  return props.events.map((e) => {
+interface Phase {
+  status: string
+  time: string
+  entries: ToolEntry[]
+}
+
+const phases = computed(() => {
+  const result: Phase[] = []
+  let current: Phase | null = null
+
+  for (const e of props.events) {
     const d = e.data as Record<string, unknown> | undefined
     const time = new Date(e.createdAt).toLocaleTimeString()
 
     if (e.type === 'status_change') {
-      return { id: e.id, time, kind: 'status' as const, text: String(d?.status ?? '') }
+      current = { status: String(d?.status ?? ''), time, entries: [] }
+      result.push(current)
+      continue
     }
+
+    if (!current) {
+      current = { status: 'INIT', time, entries: [] }
+      result.push(current)
+    }
+
     if (e.type === 'tool_call') {
       const tool = String(d?.tool ?? '')
       const input = d?.input
-      const summary = typeof input === 'string'
-        ? input.slice(0, 120)
-        : input ? JSON.stringify(input).slice(0, 120) : ''
-      return { id: e.id, time, kind: 'tool_call' as const, text: tool, detail: summary }
-    }
-    if (e.type === 'tool_result') {
+      const detail = typeof input === 'string' ? input.slice(0, 200) : input ? JSON.stringify(input).slice(0, 200) : ''
+      current.entries.push({ id: e.id, time, kind: 'tool_call', tool, detail })
+    } else if (e.type === 'tool_result') {
       const tool = String(d?.tool ?? '')
-      const output = String(d?.output ?? '').slice(0, 200)
-      return { id: e.id, time, kind: 'tool_result' as const, text: tool, detail: output }
+      const detail = String(d?.output ?? '').slice(0, 300)
+      current.entries.push({ id: e.id, time, kind: 'tool_result', tool, detail })
+    } else if (e.type === 'agent_text') {
+      current.entries.push({ id: e.id, time, kind: 'agent_text', text: String(d?.text ?? '').slice(0, 400) })
+    } else if (e.type === 'error') {
+      current.entries.push({ id: e.id, time, kind: 'error', text: String(d?.message ?? JSON.stringify(d)) })
+    } else {
+      current.entries.push({ id: e.id, time, kind: 'other', text: e.type })
     }
-    if (e.type === 'agent_text') {
-      return { id: e.id, time, kind: 'agent_text' as const, text: String(d?.text ?? '').slice(0, 300) }
-    }
-    if (e.type === 'error') {
-      return { id: e.id, time, kind: 'error' as const, text: String(d?.message ?? JSON.stringify(d)) }
-    }
-    return { id: e.id, time, kind: 'other' as const, text: e.type, detail: d?.message ? String(d.message) : undefined }
-  })
+  }
+
+  return result
 })
 
-const expanded = ref<Set<number>>(new Set())
-const toggle = (id: number) => {
-  if (expanded.value.has(id)) expanded.value.delete(id)
-  else expanded.value.add(id)
+const expandedPhases = ref<Set<number>>(new Set())
+const expandedEntries = ref<Set<number>>(new Set())
+
+function togglePhase(idx: number) {
+  if (expandedPhases.value.has(idx)) expandedPhases.value.delete(idx)
+  else expandedPhases.value.add(idx)
 }
+
+function toggleEntry(id: number) {
+  if (expandedEntries.value.has(id)) expandedEntries.value.delete(id)
+  else expandedEntries.value.add(id)
+}
+
+const container = ref<HTMLElement>()
+const autoScroll = ref(true)
 
 watch(() => props.events.length, async () => {
   if (!autoScroll.value) return
   await nextTick()
-  if (container.value) {
-    container.value.scrollTop = container.value.scrollHeight
-  }
+  if (container.value) container.value.scrollTop = container.value.scrollHeight
 })
 
 function onScroll() {
   if (!container.value) return
   const { scrollTop, scrollHeight, clientHeight } = container.value
   autoScroll.value = scrollHeight - scrollTop - clientHeight < 40
+}
+
+function statusColor(status: string): string {
+  return STATUS_COLORS[status as RunStatus] ?? 'bg-gray-100 text-gray-700'
+}
+
+function statusLabel(status: string): string {
+  return STATUS_LABELS[status as RunStatus] ?? status
+}
+
+function toolCallCount(entries: ToolEntry[]): number {
+  return entries.filter(e => e.kind === 'tool_call').length
 }
 </script>
 
@@ -65,73 +108,78 @@ function onScroll() {
       <h2 class="text-sm font-semibold">Agent Log</h2>
       <span class="text-xs text-[hsl(var(--muted-foreground))] tabular-nums">{{ events.length }} events</span>
     </div>
-    <div
-      ref="container"
-      class="overflow-y-auto max-h-[420px] font-mono text-xs leading-relaxed"
-      @scroll="onScroll"
-    >
-      <div
-        v-for="entry in entries"
-        :key="entry.id"
-        class="flex gap-2 px-4 py-1 hover:bg-[hsl(var(--secondary)/0.5)] border-b border-[hsl(var(--border)/0.3)]"
-      >
-        <span class="text-[hsl(var(--muted-foreground))] whitespace-nowrap shrink-0 tabular-nums select-none">
-          {{ entry.time }}
-        </span>
+    <div ref="container" class="overflow-y-auto max-h-[500px]" @scroll="onScroll">
+      <div v-for="(phase, idx) in phases" :key="idx" class="border-b border-[hsl(var(--border)/0.3)]">
+        <!-- Phase header -->
+        <button
+          class="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-[hsl(var(--secondary)/0.5)] cursor-pointer"
+          @click="togglePhase(idx)"
+        >
+          <span class="text-xs text-[hsl(var(--muted-foreground))] tabular-nums whitespace-nowrap font-mono">
+            {{ phase.time }}
+          </span>
+          <span
+            class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+            :class="statusColor(phase.status)"
+          >
+            {{ statusLabel(phase.status) }}
+          </span>
+          <span v-if="phase.entries.length" class="text-xs text-[hsl(var(--muted-foreground))]">
+            {{ toolCallCount(phase.entries) }} calls
+          </span>
+          <span v-if="phase.entries.length" class="ml-auto text-xs text-[hsl(var(--muted-foreground))]">
+            {{ expandedPhases.has(idx) ? '▾' : '▸' }}
+          </span>
+        </button>
 
-        <!-- Status change -->
-        <div v-if="entry.kind === 'status'" class="flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>
-          <span class="text-amber-600">{{ entry.text }}</span>
-        </div>
+        <!-- Phase entries -->
+        <div v-if="expandedPhases.has(idx) && phase.entries.length" class="mx-4 mb-3 rounded bg-[hsl(var(--secondary)/0.5)] border border-[hsl(var(--border)/0.3)]">
+          <div
+            v-for="entry in phase.entries"
+            :key="entry.id"
+            class="flex gap-2 px-3 py-1 text-xs font-mono border-b border-[hsl(var(--border)/0.2)] last:border-b-0"
+          >
+            <span class="text-[hsl(var(--muted-foreground))] whitespace-nowrap tabular-nums select-none shrink-0">
+              {{ entry.time }}
+            </span>
 
-        <!-- Tool call -->
-        <div v-else-if="entry.kind === 'tool_call'" class="min-w-0 flex-1">
-          <button class="flex items-center gap-1.5 cursor-pointer" @click="toggle(entry.id)">
-            <span class="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"></span>
-            <span class="text-blue-600 font-medium">{{ entry.text }}</span>
-            <span class="text-[hsl(var(--muted-foreground))]">called</span>
-            <span class="text-[hsl(var(--muted-foreground))]">{{ expanded.has(entry.id) ? '▾' : '▸' }}</span>
-          </button>
-          <pre
-            v-if="expanded.has(entry.id) && entry.detail"
-            class="mt-1 ml-3 text-[10px] bg-[hsl(var(--secondary))] rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all text-[hsl(var(--muted-foreground))]"
-          >{{ entry.detail }}</pre>
-        </div>
+            <!-- Tool call -->
+            <div v-if="entry.kind === 'tool_call'" class="min-w-0 flex-1">
+              <button class="flex items-center gap-1 cursor-pointer" @click="toggleEntry(entry.id)">
+                <span class="text-blue-600 font-medium">{{ entry.tool }}</span>
+                <span class="text-[hsl(var(--muted-foreground))]">{{ expandedEntries.has(entry.id) ? '▾' : '▸' }}</span>
+              </button>
+              <pre
+                v-if="expandedEntries.has(entry.id) && entry.detail"
+                class="mt-1 text-[10px] bg-[hsl(var(--card))] rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all text-[hsl(var(--muted-foreground))]"
+              >{{ entry.detail }}</pre>
+            </div>
 
-        <!-- Tool result -->
-        <div v-else-if="entry.kind === 'tool_result'" class="min-w-0 flex-1">
-          <button class="flex items-center gap-1.5 cursor-pointer" @click="toggle(entry.id)">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0"></span>
-            <span class="text-green-600 font-medium">{{ entry.text }}</span>
-            <span class="text-[hsl(var(--muted-foreground))]">result</span>
-            <span class="text-[hsl(var(--muted-foreground))]">{{ expanded.has(entry.id) ? '▾' : '▸' }}</span>
-          </button>
-          <pre
-            v-if="expanded.has(entry.id) && entry.detail"
-            class="mt-1 ml-3 text-[10px] bg-[hsl(var(--secondary))] rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all text-[hsl(var(--muted-foreground))]"
-          >{{ entry.detail }}</pre>
-        </div>
+            <!-- Tool result -->
+            <div v-else-if="entry.kind === 'tool_result'" class="min-w-0 flex-1">
+              <button class="flex items-center gap-1 cursor-pointer" @click="toggleEntry(entry.id)">
+                <span class="text-green-600">{{ entry.tool }}</span>
+                <span class="text-[hsl(var(--muted-foreground))]">result {{ expandedEntries.has(entry.id) ? '▾' : '▸' }}</span>
+              </button>
+              <pre
+                v-if="expandedEntries.has(entry.id) && entry.detail"
+                class="mt-1 text-[10px] bg-[hsl(var(--card))] rounded p-2 overflow-x-auto max-h-32 whitespace-pre-wrap break-all text-[hsl(var(--muted-foreground))]"
+              >{{ entry.detail }}</pre>
+            </div>
 
-        <!-- Agent text -->
-        <div v-else-if="entry.kind === 'agent_text'" class="min-w-0 flex-1">
-          <div class="flex items-start gap-1.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-violet-400 shrink-0 mt-1"></span>
-            <span class="text-[hsl(var(--foreground))] break-words">{{ entry.text }}</span>
+            <!-- Agent text -->
+            <div v-else-if="entry.kind === 'agent_text'" class="min-w-0 flex-1">
+              <span class="text-violet-600 break-words">{{ entry.text }}</span>
+            </div>
+
+            <!-- Error -->
+            <div v-else-if="entry.kind === 'error'" class="min-w-0 flex-1">
+              <span class="text-red-600 break-words">{{ entry.text }}</span>
+            </div>
+
+            <!-- Other -->
+            <div v-else class="text-[hsl(var(--muted-foreground))]">{{ entry.text }}</div>
           </div>
-        </div>
-
-        <!-- Error -->
-        <div v-else-if="entry.kind === 'error'" class="flex items-start gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0 mt-1"></span>
-          <span class="text-red-600 break-words">{{ entry.text }}</span>
-        </div>
-
-        <!-- Other -->
-        <div v-else class="flex items-start gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0 mt-1"></span>
-          <span class="text-[hsl(var(--muted-foreground))]">{{ entry.text }}</span>
-          <span v-if="entry.detail" class="text-[hsl(var(--muted-foreground))] truncate">{{ entry.detail }}</span>
         </div>
       </div>
     </div>
