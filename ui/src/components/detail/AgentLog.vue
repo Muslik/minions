@@ -61,12 +61,12 @@ const phases = computed(() => {
   return result
 })
 
-const expandedPhases = ref<Set<number>>(new Set())
+const collapsedPhases = ref<Set<number>>(new Set())
 const expandedEntries = ref<Set<number>>(new Set())
 
 function togglePhase(idx: number) {
-  if (expandedPhases.value.has(idx)) expandedPhases.value.delete(idx)
-  else expandedPhases.value.add(idx)
+  if (collapsedPhases.value.has(idx)) collapsedPhases.value.delete(idx)
+  else collapsedPhases.value.add(idx)
 }
 
 function toggleEntry(id: number) {
@@ -128,12 +128,12 @@ function toolCallCount(entries: ToolEntry[]): number {
             {{ toolCallCount(phase.entries) }} calls
           </span>
           <span v-if="phase.entries.length" class="ml-auto text-xs text-[hsl(var(--muted-foreground))]">
-            {{ expandedPhases.has(idx) ? '▾' : '▸' }}
+            {{ !collapsedPhases.has(idx) ? '▾' : '▸' }}
           </span>
         </button>
 
         <!-- Phase entries -->
-        <div v-if="expandedPhases.has(idx) && phase.entries.length" class="mx-4 mb-3 rounded bg-[hsl(var(--secondary)/0.5)] border border-[hsl(var(--border)/0.3)]">
+        <div v-if="!collapsedPhases.has(idx) && phase.entries.length" class="mx-4 mb-3 rounded bg-[hsl(var(--secondary)/0.5)] border border-[hsl(var(--border)/0.3)]">
           <div
             v-for="entry in phase.entries"
             :key="entry.id"
