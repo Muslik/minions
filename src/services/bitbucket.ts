@@ -75,8 +75,9 @@ export class BitbucketService {
         lastError = err;
       }
     }
+    const causeMsg = lastError instanceof Error ? lastError.message : String(lastError);
     throw new BitbucketError({
-      message: "Failed to create PR after 3 attempts",
+      message: `Failed to create PR after 3 attempts: ${causeMsg}`,
       cause: lastError,
     });
   }
