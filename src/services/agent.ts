@@ -7,8 +7,8 @@ import { loadTemplate, renderTemplate } from "./prompt.js";
 import type { RunContext } from "../domain/types.js";
 
 const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
-  clarify:   { recursionLimit: 20, reasoning: "extra_high" },
-  architect: { recursionLimit: 40, reasoning: "extra_high" },
+  clarify:   { recursionLimit: 20, reasoning: "xhigh" },
+  architect: { recursionLimit: 40, reasoning: "xhigh" },
   coder:     { recursionLimit: 80 },
   reviewer:  { recursionLimit: 40 },
 };

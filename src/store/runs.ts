@@ -45,8 +45,8 @@ function rowToRun(row: RunRow): Run {
     context: JSON.parse(row.context) as RunContext,
     plan: row.plan ?? undefined,
     questions: row.questions ? JSON.parse(row.questions) as string[] : undefined,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: row.created_at.endsWith("Z") ? row.created_at : row.created_at + "Z",
+    updatedAt: row.updated_at.endsWith("Z") ? row.updated_at : row.updated_at + "Z",
   };
 }
 
@@ -130,7 +130,7 @@ export class RunStore {
 
   listEvents(runId: string) {
     const rows = this.db.prepare('SELECT id, run_id, type, data, created_at FROM events WHERE run_id = ? ORDER BY created_at').all(runId) as any[];
-    return rows.map(r => ({ id: r.id, runId: r.run_id, type: r.type, data: JSON.parse(r.data), createdAt: r.created_at }));
+    return rows.map(r => ({ id: r.id, runId: r.run_id, type: r.type, data: JSON.parse(r.data), createdAt: r.created_at + "Z" }));
   }
 
   findActiveByTicketUrl(ticketUrl: string): Run | undefined {
@@ -138,7 +138,7 @@ export class RunStore {
       "SELECT * FROM runs WHERE json_extract(payload, '$.ticketUrl') = ? AND status NOT IN ('DONE', 'FAILED', 'ESCALATED') LIMIT 1"
     ).get(ticketUrl) as any;
     if (!row) return undefined;
-    return { id: row.id, status: row.status, payload: JSON.parse(row.payload), context: JSON.parse(row.context), plan: row.plan ?? undefined, createdAt: row.created_at, updatedAt: row.updated_at };
+    return { id: row.id, status: row.status, payload: JSON.parse(row.payload), context: JSON.parse(row.context), plan: row.plan ?? undefined, questions: row.questions ? JSON.parse(row.questions) : undefined, createdAt: row.created_at + "Z", updatedAt: row.updated_at + "Z" };
   }
 
   delete(id: string): void {
