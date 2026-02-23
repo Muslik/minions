@@ -131,6 +131,7 @@ export class RunStore {
   }
 
   delete(id: string): void {
+    this.db.prepare("DELETE FROM events WHERE run_id = ?").run(id);
     this.db.prepare("DELETE FROM runs WHERE id = ?").run(id);
   }
 }
