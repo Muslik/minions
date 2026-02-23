@@ -60,46 +60,39 @@ export class AgentFactory {
     const agent = createReactAgent({ llm, tools });
 
     let lastAiText = "";
-
-    console.log(`[agent:${role}] starting stream, recursionLimit=${ROLE_CONFIG[role].recursionLimit}`);
+    let seenCount = 1; // skip the initial HumanMessage
 
     for await (const chunk of await agent.stream(
       { messages: [new HumanMessage("proceed")] },
       { recursionLimit: ROLE_CONFIG[role].recursionLimit }
     )) {
-      const keys = Object.keys(chunk);
-      console.log(`[agent:${role}] chunk keys: ${keys.join(", ")}`);
+      const messages = (chunk as Record<string, any>).messages;
+      if (!Array.isArray(messages)) continue;
 
-      if ("agent" in chunk) {
-        for (const msg of (chunk as Record<string, any>).agent.messages) {
-          const msgType = msg._getType?.() ?? "unknown";
-          console.log(`[agent:${role}] msg type=${msgType}, tool_calls=${msg.tool_calls?.length ?? 0}`);
-          if (msgType === "ai") {
-            if (msg.tool_calls?.length) {
-              for (const tc of msg.tool_calls) {
-                console.log(`[agent:${role}] tool_call: ${tc.name}`);
-                onEvent?.("tool_call", { tool: tc.name, input: tc.args });
-              }
-            }
-            const text = (typeof msg.content === "string" ? msg.content : "").trim();
-            if (text) {
-              lastAiText = text;
-              onEvent?.("agent_text", { text: text.slice(0, 200) });
+      const newMsgs = messages.slice(seenCount);
+      seenCount = messages.length;
+
+      for (const msg of newMsgs) {
+        const msgType = typeof msg._getType === "function" ? msg._getType() : "unknown";
+
+        if (msgType === "ai") {
+          if (msg.tool_calls?.length) {
+            for (const tc of msg.tool_calls) {
+              onEvent?.("tool_call", { tool: tc.name, input: tc.args });
             }
           }
-        }
-      }
-      if ("tools" in chunk) {
-        for (const msg of (chunk as Record<string, any>).tools.messages) {
-          console.log(`[agent:${role}] tool_result: ${msg.name}`);
+          const text = (typeof msg.content === "string" ? msg.content : "").trim();
+          if (text) {
+            lastAiText = text;
+            onEvent?.("agent_text", { text: text.slice(0, 300) });
+          }
+        } else if (msgType === "tool") {
           const raw = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
           const output = raw.length > 1024 ? raw.slice(0, 1024) + "\u2026" : raw;
           onEvent?.("tool_result", { tool: msg.name, output });
         }
       }
     }
-
-    console.log(`[agent:${role}] stream complete`);
 
     return lastAiText;
   }
