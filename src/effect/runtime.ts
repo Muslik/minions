@@ -71,7 +71,8 @@ export function buildRuntime(config: OrchestratorConfig): {
     },
     git: {
       ensureMirror: (url, dir) => ensureMirror(url, dir),
-      addWorktree: (mirror, branch, dir) => addWorktree(mirror, branch, dir),
+      addWorktree: (mirror, branch, dir, targetBranch) =>
+        addWorktree(mirror, branch, dir, targetBranch),
       removeWorktree: (path) => removeWorktree(path),
       finalizeAndPush: (path, branch, squash) =>
         finalizeAndPush(path, branch, squash),

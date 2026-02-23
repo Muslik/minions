@@ -18,7 +18,12 @@ export interface NodeDeps {
   };
   git: {
     ensureMirror(url: string, dir: string): string;
-    addWorktree(mirror: string, branch: string, dir: string): string;
+    addWorktree(
+      mirror: string,
+      branch: string,
+      dir: string,
+      targetBranch?: string
+    ): string;
     removeWorktree(path: string): void;
     finalizeAndPush(path: string, branch: string, squash?: boolean): void;
     getHeadCommit(worktreePath: string): string;

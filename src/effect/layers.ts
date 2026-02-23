@@ -8,7 +8,12 @@ import type { AgentFactory } from "../services/agent.js";
 // Git service interface mirroring the standalone functions
 export interface GitServiceInterface {
   ensureMirror(url: string, dir: string): string;
-  addWorktree(mirror: string, branch: string, dir: string): string;
+  addWorktree(
+    mirror: string,
+    branch: string,
+    dir: string,
+    targetBranch?: string
+  ): string;
   removeWorktree(path: string): void;
   finalizeAndPush(path: string, branch: string, squash?: boolean): void;
 }

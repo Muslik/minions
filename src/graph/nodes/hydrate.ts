@@ -34,7 +34,12 @@ export function createHydrateNode(deps: NodeDeps) {
 
     const mirrorPath = deps.git.ensureMirror(repoUrl, reposDir);
     const branch = `minions/${jiraIssue.key}`;
-    const worktreePath = deps.git.addWorktree(mirrorPath, branch, workspacesDir);
+    const worktreePath = deps.git.addWorktree(
+      mirrorPath,
+      branch,
+      workspacesDir,
+      targetBranch
+    );
 
     // Read per-repo .minions.yaml (lives inside the repo)
     const repoConfig = loadRepoConfig(worktreePath);

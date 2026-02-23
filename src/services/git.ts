@@ -30,7 +30,8 @@ export function ensureMirror(repoUrl: string, reposDir: string): string {
 export function addWorktree(
   mirrorPath: string,
   branch: string,
-  workspacesDir: string
+  workspacesDir: string,
+  targetBranch = "main"
 ): string {
   const absWorkspacesDir = resolve(workspacesDir);
   mkdirSync(absWorkspacesDir, { recursive: true });
@@ -49,12 +50,17 @@ export function addWorktree(
   const timestamp = Date.now();
   const worktreePath = join(absWorkspacesDir, `${safeBranch}-${timestamp}`);
 
+  // Always start from the latest target branch tip.
   if (branchExists(mirrorPath, branch)) {
-    // Reuse existing branch (preserves PR commits)
-    run(`git worktree add ${worktreePath} ${branch}`, mirrorPath);
+    run(
+      `git worktree add --force -B ${branch} ${worktreePath} ${targetBranch}`,
+      mirrorPath
+    );
   } else {
-    // Create new branch
-    run(`git worktree add -b ${branch} ${worktreePath}`, mirrorPath);
+    run(
+      `git worktree add -b ${branch} ${worktreePath} ${targetBranch}`,
+      mirrorPath
+    );
   }
 
   return worktreePath;
@@ -118,5 +124,10 @@ export function finalizeAndPush(
     run(`git commit -m "feat: ${branch}"`, worktreePath);
   }
 
-  run(`git push origin ${branch}`, worktreePath);
+  try {
+    run(`git push origin ${branch}`, worktreePath);
+  } catch {
+    // Branch can be recreated from fresh target branch between runs.
+    run(`git push --force-with-lease origin ${branch}`, worktreePath);
+  }
 }

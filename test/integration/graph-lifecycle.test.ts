@@ -51,6 +51,12 @@ function makeState(overrides: Partial<CodingState> = {}): CodingState {
 
 let removeWorktreeCalled = false;
 let removeWorktreePath: string | undefined;
+const addWorktreeCalls: Array<{
+  mirror: string;
+  branch: string;
+  dir: string;
+  targetBranch?: string;
+}> = [];
 
 const mockDeps: NodeDeps = {
   jira: {
@@ -75,7 +81,10 @@ const mockDeps: NodeDeps = {
   },
   git: {
     ensureMirror: (_url, _dir) => "/tmp/mirror",
-    addWorktree: (_mirror, _branch, _dir) => "/tmp/worktree",
+    addWorktree: (mirror, branch, dir, targetBranch) => {
+      addWorktreeCalls.push({ mirror, branch, dir, targetBranch });
+      return "/tmp/worktree";
+    },
     removeWorktree: (path) => {
       removeWorktreeCalled = true;
       removeWorktreePath = path;
@@ -126,6 +135,7 @@ const mockDeps: NodeDeps = {
 describe("graph-lifecycle: individual node isolation", () => {
   describe("hydrate node", () => {
     it("returns PLANNING status with filled context when given a ticketUrl", async () => {
+      addWorktreeCalls.length = 0;
       const node = createHydrateNode(mockDeps);
       const state = makeState();
 
@@ -142,6 +152,7 @@ describe("graph-lifecycle: individual node isolation", () => {
       assert.equal(result.context!.projectKey, "PROJ");
       assert.equal(result.context!.repoSlug, "repo");
       assert.deepEqual(result.context!.figmaLinks, []);
+      assert.equal(addWorktreeCalls.at(-1)?.targetBranch, "develop");
     });
 
     it("returns ESCALATED when knowledge cannot resolve a repo", async () => {
