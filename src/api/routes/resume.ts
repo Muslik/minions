@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { Command } from "@langchain/langgraph";
+import { RunStatus } from "../../domain/types.js";
 import type { AppDeps } from "../server.js";
 
 const ResumeBodySchema = z.object({
@@ -33,6 +34,12 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
 
     const { action, comment } = parsed.data;
 
+    // Cancel: update status immediately so UI reflects it
+    if (action === "cancel") {
+      runStore.updateStatus(id, RunStatus.FAILED);
+      runStore.addEvent(id, "status", { message: "Cancelled by user" });
+    }
+
     graph
       .invoke(new Command({ resume: { action, comment } }), {
         configurable: { thread_id: id },
@@ -44,7 +51,7 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
       })
       .catch((err: unknown) => {
         console.error(`Graph resume ${id} failed:`, err);
-        runStore.updateStatus(id, "FAILED" as any);
+        runStore.updateStatus(id, RunStatus.FAILED);
         runStore.addEvent(id, "error", { message: String(err) });
       });
 
@@ -56,16 +63,15 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
     const run = runStore.get(id);
     if (!run) return c.json({ error: "Not found" }, 404);
 
+    runStore.updateStatus(id, RunStatus.FAILED);
+    runStore.addEvent(id, "status", { message: "Cancelled via API" });
+
     graph
       .invoke(new Command({ resume: { action: "cancel", comment: "Cancelled via API" } }), {
         configurable: { thread_id: id },
       })
-      .then((finalState) => {
-        runStore.updateStatus(id, finalState.status);
-      })
       .catch((err: unknown) => {
         console.error(`Graph cancel ${id} failed:`, err);
-        runStore.updateStatus(id, "FAILED" as any);
       });
 
     return c.json({ runId: id, action: "cancel" });
