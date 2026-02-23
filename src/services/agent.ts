@@ -8,7 +8,7 @@ import type { RunContext } from "../domain/types.js";
 
 const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
   clarify:   { recursionLimit: 60 },
-  architect: { recursionLimit: 80, reasoning: "xhigh" },
+  architect: { recursionLimit: 80, reasoning: "high" },
   coder:     { recursionLimit: 80 },
   reviewer:  { recursionLimit: 40 },
 };
