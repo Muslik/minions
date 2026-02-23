@@ -39,6 +39,7 @@ export interface NodeDeps {
   };
   emitEvent(runId: string, type: string, data: unknown): void;
   syncStatus(runId: string, status: string): void;
+  syncPlan(runId: string, plan: string): void;
   docker: {
     withContainer<T>(
       profile: WorkerProfile,

@@ -28,6 +28,7 @@ export function createArchitectNode(deps: NodeDeps) {
       onEvent
     );
 
+    deps.syncPlan(runId, output);
     deps.artifacts.saveArtifact(
       deps.config.storage.artifactsDir,
       runId,

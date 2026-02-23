@@ -104,6 +104,7 @@ const mockDeps: NodeDeps = {
     },
   },
   syncStatus: (_runId, _status) => {},
+  syncPlan: (_runId, _plan) => {},
   emitEvent: (_runId, _type, _data) => {},
   docker: {
     withContainer: async (_profile, _binds, fn) => fn({} as unknown),

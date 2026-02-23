@@ -90,6 +90,9 @@ export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
       runStore?.updateStatus(runId, status as any);
       runStore?.addEvent(runId, "status_change", { status });
     },
+    syncPlan: (runId, plan) => {
+      runStore?.updatePlan(runId, plan);
+    },
     docker: {
       withContainer: (profile, binds, fn, env) =>
         docker.withContainer(profile, binds, fn, env),

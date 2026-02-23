@@ -6,6 +6,18 @@ import { createToolsForRole, type AgentRole } from "./tools.js";
 import { loadTemplate, renderTemplate } from "./prompt.js";
 import type { RunContext } from "../domain/types.js";
 
+function extractText(content: unknown): string {
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .filter((b: any) => b.type === "text" || b.type === "output_text")
+      .map((b: any) => b.text ?? "")
+      .join("\n")
+      .trim();
+  }
+  return "";
+}
+
 const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
   clarify:   { recursionLimit: 60 },
   architect: { recursionLimit: 80, reasoning: "high" },
@@ -81,7 +93,7 @@ export class AgentFactory {
               onEvent?.("tool_call", { tool: tc.name, input: tc.args });
             }
           }
-          const text = (typeof msg.content === "string" ? msg.content : "").trim();
+          const text = extractText(msg.content);
           if (text) {
             lastAiText = text;
             onEvent?.("agent_text", { text: text.slice(0, 300) });
