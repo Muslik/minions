@@ -68,6 +68,10 @@ export interface NodeDeps {
   loop?: {
     fetchThread(url: string): Promise<string | null>;
   };
+  vpn: {
+    up(): Promise<void>;
+    down(): Promise<void>;
+  };
   config: {
     storage: {
       reposDir: string;

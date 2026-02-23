@@ -7,6 +7,7 @@ import { BitbucketService } from "../services/bitbucket.js";
 import { NotifierService } from "../services/notifier.js";
 import { OAuthTokenProvider } from "../services/auth.js";
 import { AgentFactory } from "../services/agent.js";
+import { VpnService } from "../services/vpn.js";
 import { ConfluenceService } from "../services/confluence.js";
 import { LoopService } from "../services/loop.js";
 import {
@@ -43,6 +44,8 @@ export function buildRuntime(config: OrchestratorConfig): {
     tokenProvider,
     promptsDir,
   });
+
+  const vpn = new VpnService();
 
   const registry = loadRegistry(knowledgeRegistryPath);
 
@@ -102,6 +105,10 @@ export function buildRuntime(config: OrchestratorConfig): {
           },
         }
       : {}),
+    vpn: {
+      up: () => vpn.up(),
+      down: () => vpn.down(),
+    },
     config: {
       storage: {
         reposDir: config.storage.reposDir,

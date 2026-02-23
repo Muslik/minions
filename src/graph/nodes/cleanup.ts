@@ -29,6 +29,9 @@ export function createCleanupNode(deps: NodeDeps) {
       data: { prUrl },
     });
 
+    // VPN is a shared resource (OpenClaw also uses it) — don't stop it here.
+    // It will be stopped by the system idle timer or manually.
+
     return {
       status: finalStatus,
     };

@@ -100,6 +100,10 @@ const mockDeps: NodeDeps = {
   artifacts: {
     saveArtifact: (_dir, _runId, _name, _content) => {},
   },
+  vpn: {
+    up: async () => {},
+    down: async () => {},
+  },
   config: {
     storage: {
       reposDir: "/tmp/repos",
