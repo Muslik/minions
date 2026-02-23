@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getArtifact } from "../../services/artifacts.js";
+import { getArtifact, listArtifacts } from "../../services/artifacts.js";
 import type { AppDeps } from "../server.js";
 
 export type ArtifactsAppDeps = AppDeps;
@@ -15,6 +15,12 @@ function inferContentType(name: string): string {
 export function artifactRoutes(appDeps: ArtifactsAppDeps): Hono {
   const app = new Hono();
   const { config } = appDeps;
+
+  app.get("/:id/artifacts", (c) => {
+    const id = c.req.param("id");
+    const names = listArtifacts(config.storage.artifactsDir, id);
+    return c.json(names);
+  });
 
   app.get("/:id/artifacts/:name", (c) => {
     const id = c.req.param("id");

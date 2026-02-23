@@ -12,7 +12,9 @@
     "dev": "tsx watch src/index.ts",
     "test": "node --import tsx/esm --test --experimental-strip-types 'test/**/*.test.ts'",
     "lint": "tsc --build",
-    "typecheck": "tsc --build"
+    "typecheck": "tsc --build",
+    "dev:ui": "pnpm --filter minions-ui dev",
+    "build:ui": "pnpm --filter minions-ui build"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",

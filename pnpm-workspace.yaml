@@ -1,1 +1,4 @@
+packages:
+  - 'ui'
+
 approveBuildsAllowlist: better-sqlite3,esbuild,ssh2,cpu-features,protobufjs

@@ -5,9 +5,10 @@ import type { AppDeps } from "../server.js";
 import { launchRun } from "../../services/run-launcher.js";
 
 const CreateRunSchema = z.object({
-  ticketUrl: z.string().url(),
-  chatId: z.string().min(1),
-  requesterId: z.string().min(1),
+  ticketUrl: z.string().url().optional(),
+  ticketKey: z.string().min(1).optional(),
+  chatId: z.string().min(1).default("web"),
+  requesterId: z.string().min(1).default("web"),
 });
 
 export type RunsAppDeps = AppDeps;
@@ -29,7 +30,22 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
       return c.json({ error: parsed.error.flatten() }, 400);
     }
 
-    const { ticketUrl, chatId, requesterId } = parsed.data;
+    const { ticketKey, chatId, requesterId } = parsed.data;
+    let { ticketUrl } = parsed.data;
+
+    if (!ticketUrl && ticketKey) {
+      ticketUrl = appDeps.config.jira.baseUrl + "/browse/" + ticketKey;
+    }
+
+    if (!ticketUrl) {
+      return c.json({ error: "Either ticketUrl or ticketKey is required" }, 400);
+    }
+
+    const existingRun = appDeps.runStore.findActiveByTicketUrl(ticketUrl);
+    if (existingRun) {
+      return c.json({ error: "Active run exists", existingRun }, 409);
+    }
+
     const runId = launchRun(
       { ticketUrl, chatId, requesterId },
       runStore,
@@ -56,6 +72,11 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
     if (limit) runs = runs.slice(0, limit);
 
     return c.json(runs);
+  });
+
+  app.get("/:id/events", (c) => {
+    const id = c.req.param("id");
+    return c.json(runStore.listEvents(id));
   });
 
   app.get("/:id", (c) => {

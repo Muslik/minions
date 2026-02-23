@@ -9,6 +9,7 @@ import { buildRuntime } from "./effect/runtime.js";
 import { compileCodingGraph } from "./graph/coding.js";
 import { createApp } from "./api/server.js";
 import { createBot } from "./bot/index.js";
+import { EventBus } from "./services/event-bus.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -21,7 +22,8 @@ async function main(): Promise<void> {
 
   // Initialize SQLite database for run state
   const db = initDb(config.storage.dbPath);
-  const runStore = new RunStore(db);
+  const eventBus = new EventBus();
+  const runStore = new RunStore(db, eventBus);
 
   // Initialize checkpoint store for LangGraph
   const checkpointer = createCheckpointer(
@@ -35,7 +37,7 @@ async function main(): Promise<void> {
   const graph = compileCodingGraph(deps, checkpointer);
 
   // Build Hono app
-  const app = createApp({ runStore, graph, config, deps });
+  const app = createApp({ runStore, graph, config, deps, eventBus });
 
   // Start Telegram bot
   const bot = createBot(
