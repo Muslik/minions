@@ -8,7 +8,7 @@ import type { RunContext } from "../domain/types.js";
 
 const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
   clarify:   { recursionLimit: 60 },
-  architect: { recursionLimit: 40, reasoning: "xhigh" },
+  architect: { recursionLimit: 80, reasoning: "xhigh" },
   coder:     { recursionLimit: 80 },
   reviewer:  { recursionLimit: 40 },
 };
@@ -61,34 +61,45 @@ export class AgentFactory {
 
     let lastAiText = "";
 
+    console.log(`[agent:${role}] starting stream, recursionLimit=${ROLE_CONFIG[role].recursionLimit}`);
+
     for await (const chunk of await agent.stream(
       { messages: [new HumanMessage("proceed")] },
       { recursionLimit: ROLE_CONFIG[role].recursionLimit }
     )) {
+      const keys = Object.keys(chunk);
+      console.log(`[agent:${role}] chunk keys: ${keys.join(", ")}`);
+
       if ("agent" in chunk) {
         for (const msg of (chunk as Record<string, any>).agent.messages) {
-          if (msg._getType() === "ai") {
+          const msgType = msg._getType?.() ?? "unknown";
+          console.log(`[agent:${role}] msg type=${msgType}, tool_calls=${msg.tool_calls?.length ?? 0}`);
+          if (msgType === "ai") {
             if (msg.tool_calls?.length) {
               for (const tc of msg.tool_calls) {
+                console.log(`[agent:${role}] tool_call: ${tc.name}`);
                 onEvent?.("tool_call", { tool: tc.name, input: tc.args });
               }
             }
             const text = (typeof msg.content === "string" ? msg.content : "").trim();
             if (text) {
               lastAiText = text;
-              onEvent?.("agent_text", { text });
+              onEvent?.("agent_text", { text: text.slice(0, 200) });
             }
           }
         }
       }
       if ("tools" in chunk) {
         for (const msg of (chunk as Record<string, any>).tools.messages) {
+          console.log(`[agent:${role}] tool_result: ${msg.name}`);
           const raw = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
           const output = raw.length > 1024 ? raw.slice(0, 1024) + "\u2026" : raw;
           onEvent?.("tool_result", { tool: msg.name, output });
         }
       }
     }
+
+    console.log(`[agent:${role}] stream complete`);
 
     return lastAiText;
   }
