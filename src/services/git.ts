@@ -81,6 +81,10 @@ export function removeWorktree(worktreePath: string): void {
   }
 }
 
+export function getHeadCommit(worktreePath: string): string {
+  return run("git rev-parse HEAD", worktreePath);
+}
+
 export function finalizeAndPush(
   worktreePath: string,
   branch: string,

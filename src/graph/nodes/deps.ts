@@ -1,4 +1,4 @@
-import type { JiraIssue, RunContext, WorkerProfile } from "../../domain/types.js";
+import type { JiraIssue, RunContext, WorkerProfile, BuildStatus } from "../../domain/types.js";
 import type { AgentRole } from "../../services/tools.js";
 
 export interface NodeDeps {
@@ -21,6 +21,7 @@ export interface NodeDeps {
     addWorktree(mirror: string, branch: string, dir: string): string;
     removeWorktree(path: string): void;
     finalizeAndPush(path: string, branch: string, squash?: boolean): void;
+    getHeadCommit(worktreePath: string): string;
   };
   agent: {
     runAgent(
@@ -51,6 +52,7 @@ export interface NodeDeps {
       title: string;
       description: string;
     }): Promise<string>;
+    getCommitBuildStatus(commitHash: string): Promise<BuildStatus[]>;
   };
   notifier: {
     notify(p: {

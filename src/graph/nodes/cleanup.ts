@@ -19,7 +19,16 @@ export function createCleanupNode(deps: NodeDeps) {
     const finalStatus =
       state.status === RunStatus.ESCALATED ? RunStatus.ESCALATED : RunStatus.DONE;
     const notifyStatus = state.status === RunStatus.ESCALATED ? "escalated" : "done";
-    const message = state.context?.prUrl ? "PR created" : "Run completed without PR";
+
+    const ciLabel =
+      state.ciStatus === "SUCCESSFUL"
+        ? " | CI ✅"
+        : state.ciStatus === "FAILED"
+          ? " | CI ❌"
+          : "";
+    const message = state.context?.prUrl
+      ? `PR created${ciLabel}`
+      : "Run completed without PR";
 
     await deps.notifier.notify({
       runId,

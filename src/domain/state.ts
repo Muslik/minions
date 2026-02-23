@@ -46,6 +46,14 @@ export const CodingStateAnnotation = Annotation.Root({
     default: () => undefined,
     reducer: (_prev, next) => next,
   }),
+  ciStatus: Annotation<string | undefined>({
+    default: () => undefined,
+    reducer: (_prev, next) => next,
+  }),
+  ciBuildUrl: Annotation<string | undefined>({
+    default: () => undefined,
+    reducer: (_prev, next) => next,
+  }),
 });
 
 export type CodingState = typeof CodingStateAnnotation.State;

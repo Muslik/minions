@@ -18,6 +18,8 @@ export function createFinalizeNode(deps: NodeDeps) {
 
     deps.git.finalizeAndPush(worktreePath ?? "", branch, true);
 
+    const commitHash = deps.git.getHeadCommit(worktreePath ?? "");
+
     const prTitle = jiraIssue
       ? `${jiraIssue.key}: ${jiraIssue.summary}`
       : branch;
@@ -32,11 +34,12 @@ export function createFinalizeNode(deps: NodeDeps) {
     });
 
     return {
-      status: RunStatus.DONE,
+      status: RunStatus.WAITING_FOR_CI,
       context: {
         ...state.context,
         planMarkdown: state.plan,
         prUrl,
+        commitHash,
       },
     };
   };

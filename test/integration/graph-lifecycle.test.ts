@@ -39,6 +39,8 @@ function makeState(overrides: Partial<CodingState> = {}): CodingState {
     escalationReason: undefined,
     resumeAction: undefined,
     resumeComment: undefined,
+    ciStatus: undefined,
+    ciBuildUrl: undefined,
     ...overrides,
   };
 }
@@ -79,6 +81,7 @@ const mockDeps: NodeDeps = {
       removeWorktreePath = path;
     },
     finalizeAndPush: (_path, _branch, _squash) => {},
+    getHeadCommit: (_path) => "abc123def456",
   },
   agent: {
     runAgent: async (role, _worktreePath, _ctx, _extra) => {
@@ -94,6 +97,7 @@ const mockDeps: NodeDeps = {
   },
   bitbucket: {
     createPR: async () => "https://bb.com/pr/1",
+    getCommitBuildStatus: async () => [],
   },
   notifier: {
     notify: async (_p: Record<string, unknown>) => {},
@@ -317,7 +321,7 @@ describe("graph-lifecycle: individual node isolation", () => {
   });
 
   describe("finalize node", () => {
-    it("returns DONE status with prUrl in context", async () => {
+    it("returns WAITING_FOR_CI status with prUrl and commitHash in context", async () => {
       const node = createFinalizeNode(mockDeps);
       const state = makeState({
         context: {
@@ -344,9 +348,10 @@ describe("graph-lifecycle: individual node isolation", () => {
 
       const result = await node(state);
 
-      assert.equal(result.status, RunStatus.DONE);
+      assert.equal(result.status, RunStatus.WAITING_FOR_CI);
       assert.ok(result.context, "context should be present");
       assert.equal(result.context!.prUrl, "https://bb.com/pr/1");
+      assert.equal(result.context!.commitHash, "abc123def456");
       assert.equal(result.context!.planMarkdown, "# Plan\n- Fix the bug");
     });
   });

@@ -7,6 +7,7 @@ export const RunStatus = {
   VALIDATING: "VALIDATING",
   REVIEWING: "REVIEWING",
   FINALIZING: "FINALIZING",
+  WAITING_FOR_CI: "WAITING_FOR_CI",
   DONE: "DONE",
   FAILED: "FAILED",
   ESCALATED: "ESCALATED",
@@ -14,7 +15,14 @@ export const RunStatus = {
 
 export type RunStatus = (typeof RunStatus)[keyof typeof RunStatus];
 
-export type ResumeAction = "approve" | "revise" | "cancel";
+export type ResumeAction = "approve" | "revise" | "cancel" | "retry" | "close";
+
+export interface BuildStatus {
+  state: "SUCCESSFUL" | "FAILED" | "INPROGRESS";
+  name: string;
+  url: string;
+  dateAdded: number;
+}
 
 export interface RunPayload {
   ticketUrl: string;
@@ -48,6 +56,7 @@ export interface RunContext {
   projectKey?: string;
   repoSlug?: string;
   prUrl?: string;
+  commitHash?: string;
   confluencePages?: Array<{ title: string; content: string }>;
   loopThreads?: string[];
   repoDescription?: string;

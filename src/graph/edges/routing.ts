@@ -19,6 +19,13 @@ export function routeAfterValidation(
   return "coder";
 }
 
+export function routeAfterCi(
+  state: CodingState
+): "await_ci" | "cleanup" {
+  if (state.resumeAction === "retry") return "await_ci";
+  return "cleanup";
+}
+
 export function routeAfterReview(
   state: CodingState
 ): "finalize" | "escalate" | "coder" {

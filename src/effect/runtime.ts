@@ -16,6 +16,7 @@ import {
   addWorktree,
   removeWorktree,
   finalizeAndPush,
+  getHeadCommit,
 } from "../services/git.js";
 import { loadRegistry, resolveRepo } from "../services/knowledge.js";
 import { saveArtifact } from "../services/artifacts.js";
@@ -74,6 +75,7 @@ export function buildRuntime(config: OrchestratorConfig): {
       removeWorktree: (path) => removeWorktree(path),
       finalizeAndPush: (path, branch, squash) =>
         finalizeAndPush(path, branch, squash),
+      getHeadCommit: (worktreePath) => getHeadCommit(worktreePath),
     },
     agent: {
       runAgent: (role, worktreePath, ctx, extra) =>
@@ -87,6 +89,7 @@ export function buildRuntime(config: OrchestratorConfig): {
     },
     bitbucket: {
       createPR: (p) => bitbucket.createPR(p),
+      getCommitBuildStatus: (hash) => bitbucket.getCommitBuildStatus(hash),
     },
     notifier: {
       notify: (p) => notifier.notify(p),

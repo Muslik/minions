@@ -1,4 +1,5 @@
 import type { BitbucketConfig } from "../config/schema.js";
+import type { BuildStatus } from "../domain/types.js";
 import { BitbucketError } from "../domain/errors.js";
 
 interface CreatePRParams {
@@ -78,5 +79,23 @@ export class BitbucketService {
       message: "Failed to create PR after 3 attempts",
       cause: lastError,
     });
+  }
+
+  async getCommitBuildStatus(commitHash: string): Promise<BuildStatus[]> {
+    const url = `${this.baseUrl}/rest/build-status/1.0/commits/${commitHash}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: this.authHeader,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new BitbucketError({
+        message: `Build status API returned ${res.status}: ${text}`,
+      });
+    }
+    const data = (await res.json()) as { values: BuildStatus[] };
+    return data.values ?? [];
   }
 }
