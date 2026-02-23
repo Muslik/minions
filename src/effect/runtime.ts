@@ -63,6 +63,7 @@ export function buildRuntime(config: OrchestratorConfig): {
   const deps: NodeDeps = {
     jira: {
       fetchIssue: (url) => jira.fetchIssue(url),
+    transitionIssue: (key, name) => jira.transitionIssue(key, name),
     },
     knowledge: {
       resolveRepo: (issue) => resolveRepo(registry, issue),

@@ -4,6 +4,7 @@ import type { AgentRole } from "../../services/tools.js";
 export interface NodeDeps {
   jira: {
     fetchIssue(url: string): Promise<JiraIssue>;
+    transitionIssue(issueKey: string, transitionName: string): Promise<void>;
   };
   knowledge: {
     resolveRepo(issue: JiraIssue): {

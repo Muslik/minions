@@ -61,6 +61,7 @@ const mockDeps: NodeDeps = {
       links: [],
       figmaLinks: [],
     }),
+    transitionIssue: async () => {},
   },
   knowledge: {
     resolveRepo: () => ({

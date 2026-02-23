@@ -17,6 +17,10 @@ export function createHydrateNode(deps: NodeDeps) {
 
     const jiraIssue = await deps.jira.fetchIssue(ticketUrl);
 
+    await deps.jira.transitionIssue(jiraIssue.key, "In Progress").catch((err) => {
+      console.warn(`[hydrate] Failed to transition ${jiraIssue.key} to In Progress:`, err);
+    });
+
     const repoMatch = deps.knowledge.resolveRepo(jiraIssue);
     if (!repoMatch) {
       return {
