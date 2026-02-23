@@ -33,7 +33,7 @@ export function buildRuntime(config: OrchestratorConfig): {
   const docker = new DockerService(config.docker);
   const jira = new JiraService(config.jira);
   const bitbucket = new BitbucketService(config.bitbucket);
-  const telegramChannel = new TelegramChannel(config.notifier.telegram.botToken);
+  const telegramChannel = new TelegramChannel(config.notifier.telegram.botToken, config.notifier.telegram.chatId);
   const notifier = new NotifierService([telegramChannel]);
 
   const authDir = config.agent.authDir.startsWith("~")

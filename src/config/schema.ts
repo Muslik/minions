@@ -33,6 +33,7 @@ export const BitbucketConfigSchema = z.object({
 export const NotifierConfigSchema = z.object({
   telegram: z.object({
     botToken: z.string(),
+    chatId: z.string(),
   }),
 });
 

@@ -14,16 +14,18 @@ const STATUS_LABEL: Record<string, string> = {
 
 export class TelegramChannel {
   private baseUrl: string;
+  private chatId: string;
 
-  constructor(botToken: string) {
+  constructor(botToken: string, chatId: string) {
     this.baseUrl = `${TG_API}${botToken}`;
+    this.chatId = chatId;
   }
 
   async send(payload: NotifyPayload): Promise<void> {
     const text = formatMessage(payload);
 
     const body: Record<string, unknown> = {
-      chat_id: payload.chatId,
+      chat_id: this.chatId,
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,

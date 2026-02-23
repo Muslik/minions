@@ -23,6 +23,7 @@ bitbucket:
 notifier:
   telegram:
     botToken: ""
+    chatId: ""
 
 agent:
   model: "gpt-5.3-codex"

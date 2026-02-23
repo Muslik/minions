@@ -93,6 +93,7 @@ bitbucket:
 notifier:
   telegram:
     botToken: "test-bot-token"
+    chatId: "123456"
 
 agent:
   model: "gpt-5.3-codex"
@@ -120,6 +121,7 @@ bitbucket:
 notifier:
   telegram:
     botToken: "test-token"
+    chatId: "123456"
 
 agent: {}
 `;
@@ -165,6 +167,7 @@ bitbucket:
 notifier:
   telegram:
     botToken: "test-token"
+    chatId: "123456"
 agent: {}
 `, "utf-8");
 
@@ -228,7 +231,7 @@ agent: {}
         token: "t",
       },
       bitbucket: { baseUrl: "https://bb.example.com", token: "t" },
-      notifier: { telegram: { botToken: "t" } },
+      notifier: { telegram: { botToken: "t", chatId: "123" } },
       agent: {},
     };
 
