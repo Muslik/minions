@@ -1,0 +1,46 @@
+{
+  "name": "minions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc --build tsconfig.app.json",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "node --import tsx/esm --test --experimental-strip-types 'test/**/*.test.ts'",
+    "lint": "tsc --build",
+    "typecheck": "tsc --build"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@langchain/core": "^1.1.27",
+    "@langchain/langgraph": "^1.1.5",
+    "@langchain/langgraph-checkpoint-sqlite": "^1.0.1",
+    "@langchain/openai": "^1.2.9",
+    "better-sqlite3": "^11.7.0",
+    "dockerode": "^4.0.4",
+    "effect": "^3.12.5",
+    "hono": "^4.6.16",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/dockerode": "^3.3.33",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild",
+      "ssh2",
+      "cpu-features",
+      "protobufjs"
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+server:
+  host: "0.0.0.0"
+  port: 3000
+
+docker:
+  socketPath: "/var/run/docker.sock"
+  image: "minions-worker:latest"
+
+storage:
+  dbPath: "./data/minions.db"
+  artifactsDir: "./artifacts"
+  reposDir: "./repos"
+  workspacesDir: "./workspaces"
+
+jira:
+  baseUrl: "https://jira.twiket.com"
+  token: ""
+
+bitbucket:
+  baseUrl: "https://bitbucket.twiket.com"
+  token: ""
+
+notifier:
+  webhookUrl: "http://localhost:4000/webhook"
+  hmacSecret: "change-me"
+
+agent:
+  model: "o3"
+  authDir: "~/.codex"

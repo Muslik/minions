@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════
+# Minions Knowledge Registry
+# Only static knowledge that can't be fetched from APIs
+# ═══════════════════════════════════════════
+
+bitbucket:
+  project: "onetwotrip"
+  baseCloneUrl: "ssh://git@bitbucket.twiket.com/onetwotrip"
+
+git:
+  branchFormat: "{{TICKET_KEY}}-{{SHORT_DESCRIPTION}}"
+  commitFormat: "{{TICKET_KEY}}: {{MESSAGE}}"
+  squashCommitFormat: "{{TICKET_KEY}}: {{SUMMARY}}"
+
+# Package scope → repos (исключения и неочевидные маппинги)
+packageScopes:
+  "@ott/":
+    - "front-components"    # старая библиотека компонентов
+    - "front-core-packages" # новая библиотека компонентов
+  "@ott/crypto-trips":
+    - "back-components"     # исключение — бэкенд
+
+# Repos: описание + default branch
+repos:
+  front-avia:
+    description: "Авиабилеты — основной продукт OTT"
+    branch: "master"
+  front-railways:
+    description: "ЖД билеты"
+    branch: "master"
+  front-bus:
+    description: "Автобусные билеты"
+    branch: "master"
+  front-components:
+    description: "Общие UI-компоненты (старая библиотека, пакеты @ott/)"
+    branch: "master"
+  front-core-packages:
+    description: "Core-пакеты: утилиты, API, хуки (новая библиотека, пакеты @ott/)"
+    branch: "master"
+  front-tlive:
+    description: "TLive — старая версия заказа (legacy)"
+    branch: "master"
+  front-solar-avia:
+    description: "Solar Avia — white-label авиа"
+    branch: "master"
+  back-components:
+    description: "Бэкенд-компоненты"
+    branch: "master"
+
+# Jira project → default repo
+# Resolution: packageScopes (by description text) > project default
+projects:
+  AVIA:
+    default: "front-avia"
+  RR:
+    default: "front-railways"
+  BUS:
+    default: "front-bus"
+  FC:
+    default: "front-components"
+  TL:
+    default: "front-tlive"
+  SL:
+    default: "front-solar-avia"

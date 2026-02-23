@@ -1,0 +1,43 @@
+import { RunStatus } from "../../domain/types.js";
+import type { CodingState } from "../../domain/state.js";
+import type { NodeDeps } from "./deps.js";
+
+export function createFinalizeNode(deps: NodeDeps) {
+  return async function finalizeNode(
+    state: CodingState
+  ): Promise<Partial<CodingState>> {
+    const {
+      worktreePath,
+      targetBranch,
+      jiraIssue,
+      projectKey,
+      repoSlug,
+    } = state.context;
+
+    const branch = `minions/${jiraIssue?.key ?? state.runId}`;
+
+    deps.git.finalizeAndPush(worktreePath ?? "", branch, true);
+
+    const prTitle = jiraIssue
+      ? `${jiraIssue.key}: ${jiraIssue.summary}`
+      : branch;
+
+    const prUrl = await deps.bitbucket.createPR({
+      projectKey: projectKey ?? "",
+      repoSlug: repoSlug ?? "",
+      sourceBranch: branch,
+      targetBranch: targetBranch ?? "main",
+      title: prTitle,
+      description: state.plan ?? "",
+    });
+
+    return {
+      status: RunStatus.DONE,
+      context: {
+        ...state.context,
+        planMarkdown: state.plan,
+        prUrl,
+      },
+    };
+  };
+}

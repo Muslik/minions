@@ -1,0 +1,15 @@
+import type { WorkerProfile } from "./types.js";
+
+export const MAX_VALIDATION_LOOPS = 2;
+export const MAX_REVIEWER_LOOPS = 2;
+
+export const WORKER_PROFILES: Record<string, WorkerProfile> = {
+  validator: {
+    role: "validator",
+    cpu: 2,
+    memory: "4g",
+    network: "bridge",
+    readOnly: false,
+    timeoutMs: 300_000,
+  },
+};
