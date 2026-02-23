@@ -9,7 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex gap-4 overflow-x-auto pb-4">
+  <div class="grid grid-cols-5 gap-4">
     <KanbanColumn
       v-for="col in columns"
       :key="col.key"

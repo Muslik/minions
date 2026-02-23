@@ -9,7 +9,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="flex-shrink-0 w-72">
+  <div class="min-w-0">
     <div class="flex items-center justify-between mb-3 px-1">
       <h3 class="font-semibold text-sm text-[hsl(var(--foreground))]">{{ label }}</h3>
       <span class="text-xs text-[hsl(var(--muted-foreground))] bg-[hsl(var(--secondary))] rounded-full px-2 py-0.5">

@@ -18,6 +18,9 @@ const { data: events } = useRunEvents(() => props.id)
     Loading run...
   </div>
   <div v-else-if="run" class="max-w-4xl mx-auto space-y-6">
+    <RouterLink to="/" class="inline-flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+      &larr; Back to board
+    </RouterLink>
     <RunHeader :run="run" />
     <PrLink v-if="run.context.prUrl" :url="run.context.prUrl as string" />
     <ApprovalPanel v-if="run.status === 'AWAITING_APPROVAL'" :run-id="run.id" />

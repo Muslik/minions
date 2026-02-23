@@ -27,6 +27,10 @@ export function fetchRunEvents(id: string): Promise<RunEvent[]> {
   return apiFetch<RunEvent[]>(`/runs/${id}/events`)
 }
 
+export function deleteRun(id: string): Promise<void> {
+  return apiFetch(`/runs/${id}`, { method: 'DELETE' })
+}
+
 export function fetchArtifacts(id: string): Promise<string[]> {
   return apiFetch<string[]>(`/runs/${id}/artifacts`)
 }
