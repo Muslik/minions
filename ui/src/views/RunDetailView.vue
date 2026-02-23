@@ -5,7 +5,7 @@ import RunHeader from '../components/detail/RunHeader.vue'
 import PlanViewer from '../components/detail/PlanViewer.vue'
 import ApprovalPanel from '../components/detail/ApprovalPanel.vue'
 import ClarifyPanel from '../components/detail/ClarifyPanel.vue'
-import EventTimeline from '../components/detail/EventTimeline.vue'
+import AgentLog from '../components/detail/AgentLog.vue'
 import ArtifactList from '../components/detail/ArtifactList.vue'
 import PrLink from '../components/detail/PrLink.vue'
 
@@ -28,7 +28,7 @@ const { data: events } = useRunEvents(() => props.id)
     <ApprovalPanel v-if="run.status === 'AWAITING_APPROVAL'" :run-id="run.id" />
     <PlanViewer v-if="run.plan" :plan="run.plan" />
     <ArtifactList :run-id="run.id" />
-    <EventTimeline :events="events ?? []" />
+    <AgentLog v-if="events?.length" :events="events" />
   </div>
   <div v-else class="text-center py-20 text-[hsl(var(--muted-foreground))]">
     Run not found

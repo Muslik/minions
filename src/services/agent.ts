@@ -7,7 +7,7 @@ import { loadTemplate, renderTemplate } from "./prompt.js";
 import type { RunContext } from "../domain/types.js";
 
 const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
-  clarify:   { recursionLimit: 40 },
+  clarify:   { recursionLimit: 60 },
   architect: { recursionLimit: 40, reasoning: "xhigh" },
   coder:     { recursionLimit: 80 },
   reviewer:  { recursionLimit: 40 },
@@ -74,7 +74,10 @@ export class AgentFactory {
               }
             }
             const text = (typeof msg.content === "string" ? msg.content : "").trim();
-            if (text) lastAiText = text;
+            if (text) {
+              lastAiText = text;
+              onEvent?.("agent_text", { text });
+            }
           }
         }
       }
