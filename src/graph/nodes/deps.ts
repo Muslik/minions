@@ -33,9 +33,11 @@ export interface NodeDeps {
       role: AgentRole,
       worktreePath: string,
       ctx: RunContext,
-      extra?: Record<string, string>
+      extra?: Record<string, string>,
+      onEvent?: (type: string, data: unknown) => void
     ): Promise<string>;
   };
+  emitEvent(runId: string, type: string, data: unknown): void;
   docker: {
     withContainer<T>(
       profile: WorkerProfile,

@@ -23,7 +23,9 @@ export function createCoderNode(deps: NodeDeps) {
     if (state.resumeComment) extra["reviewComment"] = state.resumeComment;
     if (state.error) extra["validationError"] = state.error;
 
-    await deps.agent.runAgent("coder", worktreePath ?? "", state.context, extra);
+    const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
+
+    await deps.agent.runAgent("coder", worktreePath ?? "", state.context, extra, onEvent);
 
     return {
       status: RunStatus.VALIDATING,

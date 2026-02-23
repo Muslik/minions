@@ -93,13 +93,14 @@ const mockDeps: NodeDeps = {
     getHeadCommit: (_path) => "abc123def456",
   },
   agent: {
-    runAgent: async (role, _worktreePath, _ctx, _extra) => {
+    runAgent: async (role, _worktreePath, _ctx, _extra, _onEvent) => {
       if (role === "architect") return "# Plan\n- Fix the bug";
       if (role === "coder") return "Code written";
       if (role === "reviewer") return "APPROVED";
       return "";
     },
   },
+  emitEvent: (_runId, _type, _data) => {},
   docker: {
     withContainer: async (_profile, _binds, fn) => fn({} as unknown),
     exec: async () => ({ stdout: "ok", stderr: "", exitCode: 0 }),

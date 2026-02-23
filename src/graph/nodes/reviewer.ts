@@ -32,11 +32,14 @@ export function createReviewerNode(deps: NodeDeps) {
       jiraIssue: state.context.jiraIssue,
     };
 
+    const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
+
     const output = await deps.agent.runAgent(
       "reviewer",
       worktreePath ?? "",
       reviewContext,
-      { diff, plan: state.plan ?? "" }
+      { diff, plan: state.plan ?? "" },
+      onEvent
     );
 
     const approvedMatch = /\bAPPROVED\b/.test(output);

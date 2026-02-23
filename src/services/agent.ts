@@ -34,7 +34,8 @@ export class AgentFactory {
     role: AgentRole,
     worktreePath: string,
     context: RunContext,
-    extraVars?: Record<string, string>
+    extraVars?: Record<string, string>,
+    onEvent?: (type: string, data: unknown) => void
   ): Promise<string> {
     const apiKey = await this.tokenProvider.getAccessToken();
 
@@ -56,22 +57,35 @@ export class AgentFactory {
     const tools = createToolsForRole(role, worktreePath);
     const agent = createReactAgent({ llm, tools });
 
-    const result = await agent.invoke(
-      {
-        messages: [new HumanMessage("proceed")],
-      },
-      { recursionLimit: RECURSION_LIMITS[role] }
-    );
+    let lastAiText = "";
 
-    const messages = result.messages;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i]!;
-      if (msg._getType() !== "ai") continue;
-      const text = msg.text?.trim();
-      if (text) return text;
+    for await (const chunk of await agent.stream(
+      { messages: [new HumanMessage("proceed")] },
+      { recursionLimit: RECURSION_LIMITS[role] }
+    )) {
+      if ("agent" in chunk) {
+        for (const msg of (chunk as Record<string, any>).agent.messages) {
+          if (msg._getType() === "ai") {
+            if (msg.tool_calls?.length) {
+              for (const tc of msg.tool_calls) {
+                onEvent?.("tool_call", { tool: tc.name, input: tc.args });
+              }
+            }
+            const text = (typeof msg.content === "string" ? msg.content : "").trim();
+            if (text) lastAiText = text;
+          }
+        }
+      }
+      if ("tools" in chunk) {
+        for (const msg of (chunk as Record<string, any>).tools.messages) {
+          const raw = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+          const output = raw.length > 1024 ? raw.slice(0, 1024) + "\u2026" : raw;
+          onEvent?.("tool_result", { tool: msg.name, output });
+        }
+      }
     }
 
-    return "";
+    return lastAiText;
   }
 }
 

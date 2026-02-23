@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   );
 
   // Build service layer
-  const { deps, cleanup } = buildRuntime(config);
+  const { deps, cleanup } = buildRuntime(config, runStore);
 
   // Compile the LangGraph coding graph
   const graph = compileCodingGraph(deps, checkpointer);

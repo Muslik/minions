@@ -8,10 +8,14 @@ export function createArchitectNode(deps: NodeDeps) {
   ): Promise<Partial<CodingState>> {
     const { runId, worktreePath } = state.context;
 
+    const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
+
     const output = await deps.agent.runAgent(
       "architect",
       worktreePath ?? "",
-      state.context
+      state.context,
+      undefined,
+      onEvent
     );
 
     deps.artifacts.saveArtifact(

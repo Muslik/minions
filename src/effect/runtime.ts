@@ -1,6 +1,7 @@
 import path from "path";
 import type { OrchestratorConfig } from "../config/schema.js";
 import type { NodeDeps } from "../graph/nodes/deps.js";
+import type { RunStore } from "../store/runs.js";
 import { DockerService } from "../services/docker.js";
 import { JiraService } from "../services/jira.js";
 import { BitbucketService } from "../services/bitbucket.js";
@@ -21,7 +22,7 @@ import {
 import { loadRegistry, resolveRepo } from "../services/knowledge.js";
 import { saveArtifact } from "../services/artifacts.js";
 
-export function buildRuntime(config: OrchestratorConfig): {
+export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
   deps: NodeDeps;
   cleanup: () => void;
 } {
@@ -79,8 +80,11 @@ export function buildRuntime(config: OrchestratorConfig): {
       getHeadCommit: (worktreePath) => getHeadCommit(worktreePath),
     },
     agent: {
-      runAgent: (role, worktreePath, ctx, extra) =>
-        agentFactory.runAgent(role, worktreePath, ctx, extra),
+      runAgent: (role, worktreePath, ctx, extra, onEvent) =>
+        agentFactory.runAgent(role, worktreePath, ctx, extra, onEvent),
+    },
+    emitEvent: (runId, type, data) => {
+      runStore?.addEvent(runId, type, data);
     },
     docker: {
       withContainer: (profile, binds, fn, env) =>
