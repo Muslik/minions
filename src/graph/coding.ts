@@ -5,6 +5,8 @@ import type { NodeDeps } from "./nodes/deps.js";
 import { createHydrateNode } from "./nodes/hydrate.js";
 import { createArchitectNode } from "./nodes/architect.js";
 import { createAwaitApprovalNode } from "./nodes/await-approval.js";
+import { createClarifyNode } from "./nodes/clarify.js";
+import { createAwaitClarificationNode } from "./nodes/await-clarification.js";
 import { createCoderNode } from "./nodes/coder.js";
 import { createValidateNode } from "./nodes/validate.js";
 import { createReviewerNode } from "./nodes/reviewer.js";
@@ -16,6 +18,8 @@ import {
   routeAfterValidation,
   routeAfterReview,
   routeAfterCi,
+  routeAfterClarify,
+  routeAfterClarification,
   createEscalateNode,
 } from "./edges/routing.js";
 
@@ -25,6 +29,8 @@ export function compileCodingGraph(
 ) {
   const compiled = new StateGraph(CodingStateAnnotation)
     .addNode("hydrate", createHydrateNode(deps))
+    .addNode("clarify", createClarifyNode(deps))
+    .addNode("await_clarification", createAwaitClarificationNode(deps))
     .addNode("architect", createArchitectNode(deps))
     .addNode("await_approval", createAwaitApprovalNode(deps))
     .addNode("coder", createCoderNode(deps))
@@ -35,7 +41,15 @@ export function compileCodingGraph(
     .addNode("cleanup", createCleanupNode(deps))
     .addNode("escalate", createEscalateNode(deps))
     .addEdge(START, "hydrate")
-    .addEdge("hydrate", "architect")
+    .addEdge("hydrate", "clarify")
+    .addConditionalEdges("clarify", routeAfterClarify, {
+      await_clarification: "await_clarification",
+      architect: "architect",
+    })
+    .addConditionalEdges("await_clarification", routeAfterClarification, {
+      architect: "architect",
+      __end__: END,
+    })
     .addEdge("architect", "await_approval")
     .addEdge("coder", "validate")
     .addEdge("finalize", "await_ci")

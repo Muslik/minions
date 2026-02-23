@@ -34,6 +34,18 @@ export function routeAfterReview(
   return "coder";
 }
 
+export function routeAfterClarify(
+  state: CodingState
+): "await_clarification" | "architect" {
+  return state.questions?.length ? "await_clarification" : "architect";
+}
+
+export function routeAfterClarification(
+  state: CodingState
+): "architect" | "__end__" {
+  return state.resumeAction === "cancel" ? "__end__" : "architect";
+}
+
 export function createEscalateNode(deps: NodeDeps) {
   return async function escalateNode(
     state: CodingState

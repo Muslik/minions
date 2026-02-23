@@ -161,7 +161,7 @@ function createBashTool(worktreePath: string) {
   );
 }
 
-export type AgentRole = "architect" | "coder" | "reviewer";
+export type AgentRole = "architect" | "coder" | "reviewer" | "clarify";
 
 export function createToolsForRole(role: AgentRole, worktreePath: string) {
   const readOnlyTools = [

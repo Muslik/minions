@@ -1,6 +1,7 @@
 export type RunStatus =
   | 'RECEIVED'
   | 'HYDRATING'
+  | 'CLARIFYING'
   | 'PLANNING'
   | 'AWAITING_APPROVAL'
   | 'CODING'
@@ -42,6 +43,7 @@ export interface Run {
   payload: RunPayload
   context: RunContext
   plan?: string
+  questions?: string[]
   createdAt: string
   updatedAt: string
 }

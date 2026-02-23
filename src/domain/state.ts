@@ -46,6 +46,14 @@ export const CodingStateAnnotation = Annotation.Root({
     default: () => undefined,
     reducer: (_prev, next) => next,
   }),
+  questions: Annotation<string[] | undefined>({
+    default: () => undefined,
+    reducer: (_prev, next) => next,
+  }),
+  answers: Annotation<string[] | undefined>({
+    default: () => undefined,
+    reducer: (_prev, next) => next,
+  }),
   ciStatus: Annotation<string | undefined>({
     default: () => undefined,
     reducer: (_prev, next) => next,

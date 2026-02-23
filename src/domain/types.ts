@@ -1,6 +1,7 @@
 export const RunStatus = {
   RECEIVED: "RECEIVED",
   HYDRATING: "HYDRATING",
+  CLARIFYING: "CLARIFYING",
   PLANNING: "PLANNING",
   AWAITING_APPROVAL: "AWAITING_APPROVAL",
   CODING: "CODING",
@@ -15,7 +16,7 @@ export const RunStatus = {
 
 export type RunStatus = (typeof RunStatus)[keyof typeof RunStatus];
 
-export type ResumeAction = "approve" | "revise" | "cancel" | "retry" | "close";
+export type ResumeAction = "approve" | "revise" | "cancel" | "retry" | "close" | "answer";
 
 export interface BuildStatus {
   state: "SUCCESSFUL" | "FAILED" | "INPROGRESS";

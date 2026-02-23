@@ -9,7 +9,7 @@ export interface Column {
 export const COLUMNS: Column[] = [
   { key: 'queued', label: 'Queued', statuses: ['RECEIVED'] },
   { key: 'working', label: 'Working', statuses: ['HYDRATING', 'PLANNING', 'CODING', 'VALIDATING', 'REVIEWING', 'FINALIZING', 'WAITING_FOR_CI'] },
-  { key: 'review', label: 'Awaiting Review', statuses: ['AWAITING_APPROVAL'] },
+  { key: 'review', label: 'Awaiting Review', statuses: ['AWAITING_APPROVAL', 'CLARIFYING'] },
   { key: 'done', label: 'Done', statuses: ['DONE'] },
   { key: 'problem', label: 'Problem', statuses: ['FAILED', 'ESCALATED'] }
 ]
@@ -17,6 +17,7 @@ export const COLUMNS: Column[] = [
 export const STATUS_COLORS: Record<RunStatus, string> = {
   RECEIVED: 'bg-gray-100 text-gray-700',
   HYDRATING: 'bg-blue-100 text-blue-700',
+  CLARIFYING: 'bg-violet-100 text-violet-700',
   PLANNING: 'bg-blue-100 text-blue-700',
   AWAITING_APPROVAL: 'bg-amber-100 text-amber-700',
   CODING: 'bg-indigo-100 text-indigo-700',
@@ -32,6 +33,7 @@ export const STATUS_COLORS: Record<RunStatus, string> = {
 export const STATUS_LABELS: Record<RunStatus, string> = {
   RECEIVED: 'Received',
   HYDRATING: 'Hydrating',
+  CLARIFYING: 'Clarifying',
   PLANNING: 'Planning',
   AWAITING_APPROVAL: 'Awaiting Approval',
   CODING: 'Coding',

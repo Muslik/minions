@@ -9,6 +9,7 @@ export interface Run {
   payload: RunPayload;
   context: RunContext;
   plan?: string;
+  questions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +32,7 @@ type RunRow = {
   payload: string;
   context: string;
   plan: string | null;
+  questions: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +44,7 @@ function rowToRun(row: RunRow): Run {
     payload: JSON.parse(row.payload) as RunPayload,
     context: JSON.parse(row.context) as RunContext,
     plan: row.plan ?? undefined,
+    questions: row.questions ? JSON.parse(row.questions) as string[] : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -100,6 +103,14 @@ export class RunStore {
         "UPDATE runs SET plan = ?, updated_at = datetime('now') WHERE id = ?"
       )
       .run(plan, id);
+  }
+
+  updateQuestions(id: string, questions: string[]): void {
+    this.db
+      .prepare(
+        "UPDATE runs SET questions = ?, updated_at = datetime('now') WHERE id = ?"
+      )
+      .run(JSON.stringify(questions), id);
   }
 
   updateContext(id: string, ctx: RunContext): void {

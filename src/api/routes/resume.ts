@@ -5,8 +5,9 @@ import { RunStatus } from "../../domain/types.js";
 import type { AppDeps } from "../server.js";
 
 const ResumeBodySchema = z.object({
-  action: z.enum(["approve", "revise", "cancel"]),
+  action: z.enum(["approve", "revise", "cancel", "answer"]),
   comment: z.string().optional(),
+  answers: z.array(z.string()).optional(),
 });
 
 export type ResumeAppDeps = AppDeps;
@@ -32,7 +33,7 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
       return c.json({ error: parsed.error.flatten() }, 400);
     }
 
-    const { action, comment } = parsed.data;
+    const { action, comment, answers } = parsed.data;
 
     // Cancel: update status immediately, fire graph for cleanup only
     if (action === "cancel") {
@@ -40,7 +41,7 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
       runStore.addEvent(id, "status", { message: "Cancelled by user" });
 
       graph
-        .invoke(new Command({ resume: { action, comment } }), {
+        .invoke(new Command({ resume: { action, comment, answers } }), {
           configurable: { thread_id: id },
         })
         .catch((err: unknown) => {
@@ -51,13 +52,14 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
     }
 
     graph
-      .invoke(new Command({ resume: { action, comment } }), {
+      .invoke(new Command({ resume: { action, comment, answers } }), {
         configurable: { thread_id: id },
       })
       .then((finalState) => {
         runStore.updateStatus(id, finalState.status);
         if (finalState.context) runStore.updateContext(id, finalState.context);
         if (finalState.plan) runStore.updatePlan(id, finalState.plan);
+        if (finalState.questions) runStore.updateQuestions(id, finalState.questions);
       })
       .catch((err: unknown) => {
         console.error(`Graph resume ${id} failed:`, err);

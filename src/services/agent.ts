@@ -6,10 +6,11 @@ import { createToolsForRole, type AgentRole } from "./tools.js";
 import { loadTemplate, renderTemplate } from "./prompt.js";
 import type { RunContext } from "../domain/types.js";
 
-const RECURSION_LIMITS: Record<AgentRole, number> = {
-  architect: 40,
-  coder: 80,
-  reviewer: 40,
+const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
+  clarify:   { recursionLimit: 20, reasoning: "extra_high" },
+  architect: { recursionLimit: 40, reasoning: "extra_high" },
+  coder:     { recursionLimit: 80 },
+  reviewer:  { recursionLimit: 40 },
 };
 
 export class AgentFactory {
@@ -48,7 +49,7 @@ export class AgentFactory {
       apiKey,
       useResponsesApi: true,
       streaming: true,
-      modelKwargs: { store: false, instructions },
+      modelKwargs: { store: false, instructions, ...(ROLE_CONFIG[role].reasoning && { reasoning: { effort: ROLE_CONFIG[role].reasoning } }) },
       configuration: {
         baseURL: this.baseUrl,
       },
@@ -61,7 +62,7 @@ export class AgentFactory {
 
     for await (const chunk of await agent.stream(
       { messages: [new HumanMessage("proceed")] },
-      { recursionLimit: RECURSION_LIMITS[role] }
+      { recursionLimit: ROLE_CONFIG[role].recursionLimit }
     )) {
       if ("agent" in chunk) {
         for (const msg of (chunk as Record<string, any>).agent.messages) {

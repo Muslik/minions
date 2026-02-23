@@ -16,10 +16,10 @@ export function createRun(data: { ticketKey?: string; ticketUrl?: string; descri
   })
 }
 
-export function resumeRun(id: string, action: 'approve' | 'revise' | 'cancel', comment?: string): Promise<void> {
+export function resumeRun(id: string, action: 'approve' | 'revise' | 'cancel' | 'answer', comment?: string, answers?: string[]): Promise<void> {
   return apiFetch(`/runs/${id}/resume`, {
     method: 'POST',
-    body: JSON.stringify({ action, comment })
+    body: JSON.stringify({ action, comment, answers })
   })
 }
 

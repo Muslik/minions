@@ -32,6 +32,9 @@ export function initDb(dbPath: string): Database.Database {
   if (!cols.some((c) => c.name === "plan")) {
     db.exec("ALTER TABLE runs ADD COLUMN plan TEXT");
   }
+  if (!cols.some((c) => c.name === "questions")) {
+    db.exec("ALTER TABLE runs ADD COLUMN questions TEXT");
+  }
 
   return db;
 }

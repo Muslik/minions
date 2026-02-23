@@ -45,6 +45,10 @@ These commands will be run after implementation to verify correctness:
 {{validationCommands}}
 ```
 
+## Clarification Q&A
+
+{{clarificationQA}}
+
 ## Instructions
 
 1. Explore the repository structure — read key files to understand the codebase architecture, patterns, and conventions.

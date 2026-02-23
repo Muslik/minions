@@ -34,6 +34,10 @@ function makeState(overrides: Partial<CodingState> = {}): CodingState {
     escalationReason: undefined,
     resumeAction: undefined,
     resumeComment: undefined,
+    questions: undefined,
+    answers: undefined,
+    ciStatus: undefined,
+    ciBuildUrl: undefined,
     ...overrides,
   };
 }

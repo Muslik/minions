@@ -10,11 +10,19 @@ export function createArchitectNode(deps: NodeDeps) {
 
     const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
 
+    const extraVars: Record<string, string> = {};
+    if (state.answers?.length) {
+      const qa = state.questions
+        ?.map((q, i) => `Q: ${q}\nA: ${state.answers![i] ?? "No answer"}`)
+        .join("\n\n");
+      extraVars["clarificationQA"] = qa ?? "";
+    }
+
     const output = await deps.agent.runAgent(
       "architect",
       worktreePath ?? "",
       state.context,
-      undefined,
+      Object.keys(extraVars).length ? extraVars : undefined,
       onEvent
     );
 
