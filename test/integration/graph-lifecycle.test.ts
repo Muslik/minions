@@ -95,7 +95,7 @@ const mockDeps: NodeDeps = {
     createPR: async () => "https://bb.com/pr/1",
   },
   notifier: {
-    notify: async () => {},
+    notify: async (_p: Record<string, unknown>) => {},
   },
   artifacts: {
     saveArtifact: (_dir, _runId, _name, _content) => {},

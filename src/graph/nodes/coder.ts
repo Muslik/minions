@@ -6,7 +6,17 @@ export function createCoderNode(deps: NodeDeps) {
   return async function coderNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
-    const { worktreePath } = state.context;
+    const { worktreePath, runId, chatId, requesterId, ticketUrl, jiraIssue } = state.context;
+
+    await deps.notifier.notify({
+      runId,
+      status: "coding",
+      message: "Пишу код по плану...",
+      chatId,
+      requesterId,
+      ticketKey: jiraIssue?.key,
+      ticketUrl,
+    });
 
     const extra: Record<string, string> = {};
     if (state.plan) extra["plan"] = state.plan;

@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
-import { existsSync, mkdirSync } from "fs";
-import { join, basename } from "path";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "fs";
+import { join, basename, resolve } from "path";
 import { GitError } from "../domain/errors.js";
 
 function run(cmd: string, cwd?: string): string {
@@ -32,12 +32,44 @@ export function addWorktree(
   branch: string,
   workspacesDir: string
 ): string {
-  mkdirSync(workspacesDir, { recursive: true });
+  const absWorkspacesDir = resolve(workspacesDir);
+  mkdirSync(absWorkspacesDir, { recursive: true });
+
+  // Remove stale worktree dirs for this branch (keep the branch itself)
   const safeBranch = branch.replace(/[^a-zA-Z0-9_-]/g, "_");
+  for (const entry of readdirSync(absWorkspacesDir)) {
+    if (entry.startsWith(safeBranch)) {
+      const stale = join(absWorkspacesDir, entry);
+      try { run(`git worktree remove --force ${stale}`, mirrorPath); } catch { /* */ }
+      rmSync(stale, { recursive: true, force: true });
+    }
+  }
+  try { run("git worktree prune", mirrorPath); } catch { /* */ }
+
   const timestamp = Date.now();
-  const worktreePath = join(workspacesDir, `${safeBranch}-${timestamp}`);
-  run(`git worktree add -b ${branch} ${worktreePath}`, mirrorPath);
+  const worktreePath = join(absWorkspacesDir, `${safeBranch}-${timestamp}`);
+
+  if (branchExists(mirrorPath, branch)) {
+    // Reuse existing branch (preserves PR commits)
+    run(`git worktree add ${worktreePath} ${branch}`, mirrorPath);
+  } else {
+    // Create new branch
+    run(`git worktree add -b ${branch} ${worktreePath}`, mirrorPath);
+  }
+
   return worktreePath;
+}
+
+function branchExists(mirrorPath: string, branch: string): boolean {
+  try {
+    execSync(`git rev-parse --verify ${branch}`, {
+      cwd: mirrorPath,
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function removeWorktree(worktreePath: string): void {

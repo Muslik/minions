@@ -50,8 +50,9 @@ export const LoopConfigSchema = z
   .optional();
 
 export const AgentConfigSchema = z.object({
-  model: z.string().default("o3"),
+  model: z.string().default("gpt-5.3-codex"),
   authDir: z.string().default("~/.codex"),
+  baseUrl: z.string().default("https://chatgpt.com/backend-api/codex"),
 });
 
 export const OrchestratorConfigSchema = z.object({

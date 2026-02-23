@@ -1,11 +1,22 @@
 import { createHmac } from "crypto";
 import type { NotifierConfig } from "../config/schema.js";
 
-interface NotifyPayload {
+export interface NotifyAction {
+  label: string;
+  endpoint: string;
+  body: Record<string, string>;
+}
+
+export interface NotifyPayload {
   runId: string;
   status: string;
   message: string;
+  chatId: string;
+  requesterId: string;
+  ticketKey?: string;
+  ticketUrl?: string;
   data?: unknown;
+  actions?: NotifyAction[];
 }
 
 export class NotifierService {

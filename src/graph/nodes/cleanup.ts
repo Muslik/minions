@@ -6,8 +6,7 @@ export function createCleanupNode(deps: NodeDeps) {
   return async function cleanupNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
-    const { worktreePath, prUrl } = state.context;
-    const { runId } = state.context;
+    const { worktreePath, prUrl, runId, chatId, requesterId, ticketUrl, jiraIssue } = state.context;
 
     if (worktreePath) {
       try {
@@ -26,6 +25,10 @@ export function createCleanupNode(deps: NodeDeps) {
       runId,
       status: notifyStatus,
       message,
+      chatId,
+      requesterId,
+      ticketKey: jiraIssue?.key,
+      ticketUrl,
       data: { prUrl },
     });
 

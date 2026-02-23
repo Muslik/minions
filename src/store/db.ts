@@ -13,6 +13,7 @@ export function initDb(dbPath: string): Database.Database {
       status     TEXT NOT NULL,
       payload    TEXT NOT NULL,
       context    TEXT NOT NULL,
+      plan       TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -25,6 +26,12 @@ export function initDb(dbPath: string): Database.Database {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Migration: add plan column if missing
+  const cols = db.pragma("table_info(runs)") as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "plan")) {
+    db.exec("ALTER TABLE runs ADD COLUMN plan TEXT");
+  }
 
   return db;
 }

@@ -46,11 +46,23 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
         if (finalState.context) {
           appDeps.runStore.updateContext(runId, finalState.context);
         }
+        if (finalState.plan) {
+          appDeps.runStore.updatePlan(runId, finalState.plan);
+        }
       })
-      .catch((err: unknown) => {
+      .catch(async (err: unknown) => {
         console.error(`Graph run ${runId} failed:`, err);
         appDeps.runStore.updateStatus(runId, RunStatus.FAILED);
         appDeps.runStore.addEvent(runId, "error", { message: String(err) });
+        await appDeps.deps.notifier.notify({
+          runId,
+          status: "failed",
+          message: String(err),
+          chatId,
+          requesterId,
+          ticketKey: ticketUrl.split("/").pop(),
+          ticketUrl,
+        });
       });
 
     return c.json({ runId }, 202);

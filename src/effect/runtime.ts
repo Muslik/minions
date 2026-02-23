@@ -41,6 +41,7 @@ export function buildRuntime(config: OrchestratorConfig): {
   const tokenProvider = new OAuthTokenProvider(authDir);
   const agentFactory = new AgentFactory({
     model: config.agent.model,
+    baseUrl: config.agent.baseUrl,
     tokenProvider,
     promptsDir,
   });

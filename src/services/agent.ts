@@ -1,6 +1,6 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { SystemMessage, HumanMessage } from "@langchain/core/messages";
+import { HumanMessage } from "@langchain/core/messages";
 import type { OAuthTokenProvider } from "./auth.js";
 import { createToolsForRole, type AgentRole } from "./tools.js";
 import { loadTemplate, renderTemplate } from "./prompt.js";
@@ -14,15 +14,18 @@ const RECURSION_LIMITS: Record<AgentRole, number> = {
 
 export class AgentFactory {
   private model: string;
+  private baseUrl: string;
   private tokenProvider: OAuthTokenProvider;
   private promptsDir: string;
 
   constructor(opts: {
     model: string;
+    baseUrl: string;
     tokenProvider: OAuthTokenProvider;
     promptsDir: string;
   }) {
     this.model = opts.model;
+    this.baseUrl = opts.baseUrl;
     this.tokenProvider = opts.tokenProvider;
     this.promptsDir = opts.promptsDir;
   }
@@ -35,26 +38,27 @@ export class AgentFactory {
   ): Promise<string> {
     const apiKey = await this.tokenProvider.getAccessToken();
 
+    const vars = buildTemplateVars(context, extraVars);
+    const template = loadTemplate(this.promptsDir, role);
+    const instructions = renderTemplate(template, vars);
+
     const llm = new ChatOpenAI({
       modelName: this.model,
       apiKey,
-      temperature: 0,
+      useResponsesApi: true,
+      streaming: true,
+      modelKwargs: { store: false, instructions },
+      configuration: {
+        baseURL: this.baseUrl,
+      },
     });
 
     const tools = createToolsForRole(role, worktreePath);
-
-    const vars = buildTemplateVars(context, extraVars);
-    const template = loadTemplate(this.promptsDir, role);
-    const prompt = renderTemplate(template, vars);
-
     const agent = createReactAgent({ llm, tools });
 
     const result = await agent.invoke(
       {
-        messages: [
-          new SystemMessage(prompt),
-          new HumanMessage("proceed"),
-        ],
+        messages: [new HumanMessage("proceed")],
       },
       { recursionLimit: RECURSION_LIMITS[role] }
     );
@@ -62,13 +66,9 @@ export class AgentFactory {
     const messages = result.messages;
     for (let i = messages.length - 1; i >= 0; i--) {
       const msg = messages[i]!;
-      if (
-        msg._getType() === "ai" &&
-        typeof msg.content === "string" &&
-        msg.content.trim()
-      ) {
-        return msg.content;
-      }
+      if (msg._getType() !== "ai") continue;
+      const text = msg.text?.trim();
+      if (text) return text;
     }
 
     return "";

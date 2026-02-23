@@ -31,13 +31,17 @@ export function createEscalateNode(deps: NodeDeps) {
   return async function escalateNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
-    const { runId } = state.context;
+    const { runId, chatId, requesterId, ticketUrl, jiraIssue } = state.context;
     const reason = state.escalationReason ?? state.error ?? "Max iterations reached";
 
     await deps.notifier.notify({
       runId,
       status: "escalated",
       message: reason,
+      chatId,
+      requesterId,
+      ticketKey: jiraIssue?.key,
+      ticketUrl,
     });
 
     return {

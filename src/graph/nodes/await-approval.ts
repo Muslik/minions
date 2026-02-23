@@ -12,14 +12,23 @@ export function createAwaitApprovalNode(deps: NodeDeps) {
   return async function awaitApprovalNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
-    const { runId } = state.context;
-    const planPreview = state.plan?.slice(0, 500) ?? "(no plan)";
+    const { runId, chatId, requesterId, ticketUrl, jiraIssue } = state.context;
+    const ticketKey = jiraIssue?.key;
 
     await deps.notifier.notify({
       runId,
       status: "awaiting_approval",
-      message: planPreview,
+      message: state.plan ?? "(no plan)",
+      chatId,
+      requesterId,
+      ticketKey,
+      ticketUrl,
       data: { plan: state.plan },
+      actions: [
+        { label: "✅ Approve", endpoint: `/api/v1/runs/${runId}/resume`, body: { action: "approve" } },
+        { label: "✏️ Revise", endpoint: `/api/v1/runs/${runId}/resume`, body: { action: "revise" } },
+        { label: "❌ Cancel", endpoint: `/api/v1/runs/${runId}/cancel`, body: {} },
+      ],
     });
 
     const resume = interrupt<{ plan: string | undefined }, ResumePayload>({

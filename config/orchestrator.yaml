@@ -25,5 +25,5 @@ notifier:
   hmacSecret: "change-me"
 
 agent:
-  model: "o3"
+  model: "gpt-5.3-codex"
   authDir: "~/.codex"

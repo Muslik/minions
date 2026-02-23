@@ -56,7 +56,12 @@ export interface NodeDeps {
       runId: string;
       status: string;
       message: string;
+      chatId: string;
+      requesterId: string;
+      ticketKey?: string;
+      ticketUrl?: string;
       data?: unknown;
+      actions?: { label: string; endpoint: string; body: Record<string, string> }[];
     }): Promise<void>;
   };
   artifacts: {

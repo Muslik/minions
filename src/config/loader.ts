@@ -32,6 +32,7 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   set("notifier", "hmacSecret", e["ORCH_NOTIFIER_HMAC_SECRET"]);
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
+  set("agent", "baseUrl", e["ORCH_AGENT_BASE_URL"]);
 
   return cfg as Record<string, unknown>;
 }

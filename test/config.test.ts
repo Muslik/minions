@@ -92,7 +92,7 @@ notifier:
   hmacSecret: "hmac-secret"
 
 agent:
-  model: "o3"
+  model: "gpt-5.3-codex"
   authDir: "/opt/codex"
 `;
 
@@ -136,7 +136,7 @@ describe("Config loading", () => {
     assert.equal(config.jira.token, "jira-token");
     assert.equal(config.bitbucket.token, "bb-token");
     assert.equal(config.notifier.webhookUrl, "https://hooks.example.com/webhook");
-    assert.equal(config.agent.model, "o3");
+    assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "/opt/codex");
   });
 
@@ -206,7 +206,7 @@ agent: {}
     // docker defaults
     assert.equal(config.docker.socketPath, "/var/run/docker.sock");
     // agent defaults
-    assert.equal(config.agent.model, "o3");
+    assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "~/.codex");
   });
 
@@ -232,7 +232,7 @@ agent: {}
     const config = OrchestratorConfigSchema.parse(raw);
     assert.equal(config.server.host, "0.0.0.0");
     assert.equal(config.server.port, 3000);
-    assert.equal(config.agent.model, "o3");
+    assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "~/.codex");
   });
 });

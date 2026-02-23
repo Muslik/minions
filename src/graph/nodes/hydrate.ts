@@ -62,6 +62,19 @@ export function createHydrateNode(deps: NodeDeps) {
       }
     }
 
+    await deps.notifier.notify({
+      runId,
+      status: "started",
+      message: `Задача ${jiraIssue.key} взята в работу`,
+      chatId,
+      requesterId,
+      ticketKey: jiraIssue.key,
+      ticketUrl,
+      actions: [
+        { label: "❌ Отменить", endpoint: `/api/v1/runs/${runId}/cancel`, body: {} },
+      ],
+    });
+
     return {
       status: RunStatus.PLANNING,
       context: {
