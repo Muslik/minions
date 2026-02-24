@@ -8,7 +8,7 @@ import type { NodeDeps } from "./deps.js";
 const SOURCE_WORKDIR = "/workspace";
 const SANDBOX_WORKDIR = "/tmp/workspace";
 const FNM_WORKDIR = "/tmp/fnm";
-const EVENT_LOG_LIMIT = 2000;
+const EVENT_LOG_LIMIT = 20_000;
 
 export function createValidateNode(deps: NodeDeps) {
   return async function validateNode(
@@ -28,141 +28,92 @@ export function createValidateNode(deps: NodeDeps) {
 
     const profile = WORKER_PROFILES["validator"]!;
     const binds = [`${worktreePath}:${SOURCE_WORKDIR}:ro`];
-    const failures: string[] = [];
     const exactNodeVersion = resolveExactNodeVersion(worktreePath);
+    const script = buildValidationScript(validationCommands, exactNodeVersion);
 
-    deps.emitEvent(runId, "validation_runtime", {
+    deps.emitEvent(runId, "validation_start", {
       strategy: exactNodeVersion ? "fnm_exact" : "container_default",
       requestedNodeVersion: exactNodeVersion ?? null,
+      commands: validationCommands,
     });
 
-    await deps.docker.withContainer(profile, binds, async (container) => {
-      deps.emitEvent(runId, "validation_bootstrap_start", {
-        requestedNodeVersion: exactNodeVersion ?? null,
-      });
-
-      const bootstrapSteps = [
-        "set -euo pipefail",
-        `rm -rf ${SANDBOX_WORKDIR}`,
-        `mkdir -p ${SANDBOX_WORKDIR}`,
-        `cp -a ${SOURCE_WORKDIR}/. ${SANDBOX_WORKDIR}`,
-        `cd ${SANDBOX_WORKDIR}`,
-      ];
-
-      if (exactNodeVersion) {
-        bootstrapSteps.push(
-          `rm -rf ${FNM_WORKDIR}`,
-          `mkdir -p ${FNM_WORKDIR}`,
-          `export FNM_DIR=${FNM_WORKDIR}`,
-          "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
-          `fnm install ${exactNodeVersion}`,
-          `fnm exec --using ${exactNodeVersion} node -v`,
-          `(fnm exec --using ${exactNodeVersion} corepack enable >/dev/null 2>&1 || true)`,
-          `fnm exec --using ${exactNodeVersion} pnpm install --frozen-lockfile --ignore-scripts`
-        );
-      } else {
-        bootstrapSteps.push(
-          "node -v",
-          "(corepack enable >/dev/null 2>&1 || true)",
-          "pnpm install --frozen-lockfile --ignore-scripts"
-        );
-      }
-
-      const bootstrapScript = bootstrapSteps.join(" && ");
-
-      let bootstrap:
-        | {
-            stdout: string;
-            stderr: string;
-            exitCode: number;
-          }
-        | undefined;
-      try {
-        bootstrap = await deps.docker.exec(container, [
-          "bash",
-          "-lc",
-          bootstrapScript,
-        ]);
-      } catch (err) {
-        const detail = formatError(err);
-        deps.emitEvent(runId, "validation_bootstrap_result", {
-          exitCode: -1,
-          error: truncateForEvent(detail),
-        });
-        failures.push(
-          [
-            "Command: [bootstrap validation workspace]",
-            `Error: ${detail}`,
-          ].join("\n")
-        );
-        return undefined;
-      }
-      if (bootstrap.exitCode !== 0) {
-        deps.emitEvent(runId, "validation_bootstrap_result", {
-          exitCode: bootstrap.exitCode,
-          stdout: truncateForEvent(bootstrap.stdout),
-          stderr: truncateForEvent(bootstrap.stderr),
-        });
-        failures.push(
-          [
-            "Command: [bootstrap validation workspace]",
-            `Stdout: ${bootstrap.stdout}`,
-            `Stderr: ${bootstrap.stderr}`,
-          ].join("\n")
-        );
-        return undefined;
-      }
-      deps.emitEvent(runId, "validation_bootstrap_result", {
-        exitCode: bootstrap.exitCode,
-        stdout: truncateForEvent(bootstrap.stdout),
-        stderr: truncateForEvent(bootstrap.stderr),
-      });
-
-      for (const cmd of validationCommands) {
-        deps.emitEvent(runId, "validation_command_start", { command: cmd });
-        const wrapped = buildValidationCommand(cmd, exactNodeVersion);
-        let result:
-          | {
-              stdout: string;
-              stderr: string;
-              exitCode: number;
-            }
-          | undefined;
-        try {
-          result = await deps.docker.exec(container, ["bash", "-lc", wrapped]);
-        } catch (err) {
-          const detail = formatError(err);
-          deps.emitEvent(runId, "validation_command_result", {
-            command: cmd,
-            exitCode: -1,
-            error: truncateForEvent(detail),
-          });
-          failures.push(`Command: ${cmd}\nError: ${detail}`);
-          continue;
+    let result:
+      | {
+          stdout: string;
+          stderr: string;
+          exitCode: number;
         }
-        deps.emitEvent(runId, "validation_command_result", {
-          command: cmd,
-          exitCode: result.exitCode,
-          stdout: truncateForEvent(result.stdout),
-          stderr: truncateForEvent(result.stderr),
-        });
-        if (result.exitCode !== 0) {
-          failures.push(
-            `Command: ${cmd}\nStdout: ${result.stdout}\nStderr: ${result.stderr}`
-          );
-        }
-      }
-      return undefined;
+      | undefined;
+    try {
+      result = await deps.docker.runScript(profile, binds, script);
+    } catch (err) {
+      const detail = formatError(err);
+      deps.emitEvent(runId, "validation_result", {
+        result: "ERROR",
+        exitCode: -1,
+        error: truncateForEvent(detail),
+      });
+      return {
+        error: `Validation runtime error\n${detail}`,
+      };
+    }
+
+    deps.emitEvent(runId, "validation_result", {
+      result: result.exitCode === 0 ? "OK" : "ERROR",
+      exitCode: result.exitCode,
+      stdout: truncateForEvent(result.stdout),
+      stderr: truncateForEvent(result.stderr),
     });
 
-    if (failures.length === 0) {
+    if (result.exitCode === 0) {
       return { status: RunStatus.REVIEWING, error: undefined };
     }
 
     return {
-      error: failures.join("\n---\n"),
+      error: formatValidationFailure(result),
     };
   };
+}
+
+function buildValidationScript(
+  validationCommands: string[],
+  exactNodeVersion?: string
+): string {
+  const lines = [
+    "set -euo pipefail",
+    `rm -rf ${SANDBOX_WORKDIR}`,
+    `mkdir -p ${SANDBOX_WORKDIR}`,
+    `cp -a ${SOURCE_WORKDIR}/. ${SANDBOX_WORKDIR}`,
+    `cd ${SANDBOX_WORKDIR}`,
+  ];
+
+  if (exactNodeVersion) {
+    lines.push(
+      `rm -rf ${FNM_WORKDIR}`,
+      `mkdir -p ${FNM_WORKDIR}`,
+      `export FNM_DIR=${FNM_WORKDIR}`,
+      "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
+      `fnm install ${exactNodeVersion}`,
+      `fnm use ${exactNodeVersion}`
+    );
+  }
+
+  lines.push(
+    "node -v",
+    "(corepack enable >/dev/null 2>&1 || true)",
+    "pnpm install --frozen-lockfile --ignore-scripts"
+  );
+
+  for (const command of validationCommands) {
+    const normalized = normalizeCommand(command);
+    if (!normalized) continue;
+    lines.push(
+      `echo ${shellQuote(`[validate] ${normalized}`)}`,
+      normalized
+    );
+  }
+
+  return lines.join("\n");
 }
 
 function resolveExactNodeVersion(worktreePath: string): string | undefined {
@@ -204,17 +155,20 @@ function stringifyCause(cause: unknown): string {
   }
 }
 
-function buildValidationCommand(
-  cmd: string,
-  exactNodeVersion?: string
-): string {
-  const inWorkspace = `cd ${SANDBOX_WORKDIR} && ${cmd}`;
-  if (!exactNodeVersion) return inWorkspace;
+function formatValidationFailure(result: {
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+}): string {
   return [
-    `export FNM_DIR=${FNM_WORKDIR}`,
-    "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
-    `fnm exec --using ${exactNodeVersion} bash -lc ${shellQuote(inWorkspace)}`,
-  ].join(" && ");
+    `Validation failed (exitCode=${result.exitCode})`,
+    `Stdout: ${result.stdout}`,
+    `Stderr: ${result.stderr}`,
+  ].join("\n");
+}
+
+function normalizeCommand(command: string): string {
+  return command.replace(/\r?\n/g, " ").trim();
 }
 
 function shellQuote(value: string): string {

@@ -106,6 +106,8 @@ export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
       runStore?.updatePlan(runId, plan);
     },
     docker: {
+      runScript: (profile, binds, script, env) =>
+        docker.runScript(profile, binds, script, env),
       withContainer: (profile, binds, fn, env) =>
         docker.withContainer(profile, binds, fn, env),
       exec: (c, cmd) =>

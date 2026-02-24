@@ -17,15 +17,15 @@ export class DockerService {
   async createContainer(
     profile: WorkerProfile,
     binds: string[],
-    env?: string[]
+    env?: string[],
+    cmd?: string[]
   ): Promise<Dockerode.Container> {
     try {
       const nanoCpus = profile.cpu * 1e9;
       const memoryBytes = parseMemory(profile.memory);
       const container = await this.docker.createContainer({
         Image: this.image,
-        // Keep validator container running while we exec commands into it.
-        Cmd: ["sh", "-lc", "while true; do sleep 3600; done"],
+        Cmd: cmd ?? ["sh", "-lc", "while true; do sleep 3600; done"],
         Tty: false,
         AttachStdout: true,
         AttachStderr: true,
@@ -45,6 +45,52 @@ export class DockerService {
         message: `Failed to create container for role ${profile.role}`,
         cause: err,
       });
+    }
+  }
+
+  async runScript(
+    profile: WorkerProfile,
+    binds: string[],
+    script: string,
+    env?: string[]
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    const container = await this.createContainer(profile, binds, env, [
+      "bash",
+      "-lc",
+      script,
+    ]);
+    try {
+      const stream = await container.attach({
+        stream: true,
+        stdout: true,
+        stderr: true,
+      });
+      const stdoutChunks: Buffer[] = [];
+      const stderrChunks: Buffer[] = [];
+      container.modem.demuxStream(
+        stream,
+        {
+          write: (chunk: Buffer) => stdoutChunks.push(chunk),
+        } as unknown as NodeJS.WritableStream,
+        {
+          write: (chunk: Buffer) => stderrChunks.push(chunk),
+        } as unknown as NodeJS.WritableStream
+      );
+      const streamDone = waitForStreamEnd(stream);
+
+      await container.start();
+      const waitResult = await container.wait();
+      await streamDone;
+
+      return {
+        stdout: Buffer.concat(stdoutChunks).toString("utf-8"),
+        stderr: Buffer.concat(stderrChunks).toString("utf-8"),
+        exitCode: waitResult.StatusCode ?? -1,
+      };
+    } catch (err) {
+      throw new DockerError({ message: "run script failed", cause: err });
+    } finally {
+      await this.removeContainer(container).catch(() => undefined);
     }
   }
 
@@ -217,4 +263,18 @@ function stringifyCause(cause: unknown): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function waitForStreamEnd(stream: NodeJS.ReadableStream): Promise<void> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+    stream.on("end", finish);
+    stream.on("close", finish);
+    stream.on("error", finish);
+  });
 }

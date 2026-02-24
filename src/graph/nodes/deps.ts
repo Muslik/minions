@@ -42,6 +42,12 @@ export interface NodeDeps {
   syncStatus(runId: string, status: string): void;
   syncPlan(runId: string, plan: string): void;
   docker: {
+    runScript(
+      profile: WorkerProfile,
+      binds: string[],
+      script: string,
+      env?: string[]
+    ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
     withContainer<T>(
       profile: WorkerProfile,
       binds: string[],

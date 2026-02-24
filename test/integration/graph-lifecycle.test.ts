@@ -112,6 +112,7 @@ const mockDeps: NodeDeps = {
   syncPlan: (_runId, _plan) => {},
   emitEvent: (_runId, _type, _data) => {},
   docker: {
+    runScript: async () => ({ stdout: "ok", stderr: "", exitCode: 0 }),
     withContainer: async (_profile, _binds, fn) => fn({} as unknown),
     exec: async () => ({ stdout: "ok", stderr: "", exitCode: 0 }),
   },
@@ -284,14 +285,12 @@ describe("graph-lifecycle: individual node isolation", () => {
       const failDeps: NodeDeps = {
         ...mockDeps,
         docker: {
-          withContainer: async (_p, _b, fn) => fn({} as unknown),
-          exec: async (_c, cmd) => {
-            const shell = cmd[2] ?? "";
-            if (typeof shell === "string" && shell.includes("pnpm install --frozen-lockfile")) {
-              return { stdout: "bootstrap ok", stderr: "", exitCode: 0 };
-            }
-            return { stdout: "FAIL", stderr: "error details", exitCode: 1 };
-          },
+          ...mockDeps.docker,
+          runScript: async () => ({
+            stdout: "[validate] npm test\nFAIL",
+            stderr: "error details",
+            exitCode: 1,
+          }),
         },
       };
       const node = createValidateNode(failDeps);
@@ -311,15 +310,22 @@ describe("graph-lifecycle: individual node isolation", () => {
       // validate node does NOT set status when there are failures; only sets error
       assert.equal(result.status, undefined);
       assert.ok(result.error, "error should be set on validation failure");
-      assert.ok(result.error!.includes("npm test"), "error should contain the failed command");
+      assert.ok(
+        result.error!.includes("Validation failed (exitCode=1)"),
+        "error should include non-zero exit code"
+      );
+      assert.ok(
+        result.error!.includes("error details"),
+        "error should include stderr output"
+      );
     });
 
-    it("returns an error when docker.exec throws during bootstrap", async () => {
+    it("returns an error when docker.runScript throws", async () => {
       const failDeps: NodeDeps = {
         ...mockDeps,
         docker: {
-          withContainer: async (_p, _b, fn) => fn({} as unknown),
-          exec: async () => {
+          ...mockDeps.docker,
+          runScript: async () => {
             throw new Error("container is not running");
           },
         },
@@ -339,10 +345,10 @@ describe("graph-lifecycle: individual node isolation", () => {
       const result = await node(state);
 
       assert.equal(result.status, undefined);
-      assert.ok(result.error, "error should be set when bootstrap throws");
+      assert.ok(result.error, "error should be set when runtime throws");
       assert.ok(
-        result.error!.includes("bootstrap validation workspace"),
-        "error should include bootstrap command marker"
+        result.error!.includes("Validation runtime error"),
+        "error should include runtime failure marker"
       );
       assert.ok(
         result.error!.includes("container is not running"),
