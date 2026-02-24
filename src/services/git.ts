@@ -3,16 +3,42 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "fs";
 import { join, basename, resolve } from "path";
 import { GitError } from "../domain/errors.js";
 
-function run(cmd: string, cwd?: string): string {
+function run(cmd: string, cwd?: string, env?: NodeJS.ProcessEnv): string {
   try {
     return execSync(cmd, {
       cwd,
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf-8",
+      env,
     }).trim();
   } catch (err) {
     throw new GitError({ message: `git command failed: ${cmd}`, cause: err });
   }
+}
+
+function commitIdentityEnv(): NodeJS.ProcessEnv {
+  const name =
+    process.env["ORCH_GIT_AUTHOR_NAME"]
+    ?? process.env["GIT_AUTHOR_NAME"]
+    ?? process.env["GIT_COMMITTER_NAME"]
+    ?? "Minions Bot";
+  const email =
+    process.env["ORCH_GIT_AUTHOR_EMAIL"]
+    ?? process.env["GIT_AUTHOR_EMAIL"]
+    ?? process.env["GIT_COMMITTER_EMAIL"]
+    ?? "minions-bot@localhost";
+
+  return {
+    ...process.env,
+    GIT_AUTHOR_NAME: name,
+    GIT_AUTHOR_EMAIL: email,
+    GIT_COMMITTER_NAME: process.env["GIT_COMMITTER_NAME"] ?? name,
+    GIT_COMMITTER_EMAIL: process.env["GIT_COMMITTER_EMAIL"] ?? email,
+  };
+}
+
+function commit(worktreePath: string, message: string): void {
+  run(`git commit -m "${message}"`, worktreePath, commitIdentityEnv());
 }
 
 export function ensureMirror(repoUrl: string, reposDir: string): string {
@@ -113,13 +139,13 @@ export function finalizeAndPush(
   })();
 
   if (hasChanges) {
-    run(`git commit -m "feat: ${branch}"`, worktreePath);
+    commit(worktreePath, `feat: ${branch}`);
   }
 
   if (squash) {
     const mergeBase = run(`git merge-base ${targetBranch} HEAD`, worktreePath);
     run(`git reset --soft ${mergeBase}`, worktreePath);
-    run(`git commit -m "feat: ${branch}"`, worktreePath);
+    commit(worktreePath, `feat: ${branch}`);
   }
 
   try {
