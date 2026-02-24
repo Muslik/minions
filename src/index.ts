@@ -10,6 +10,7 @@ import { compileCodingGraph } from "./graph/coding.js";
 import { createApp } from "./api/server.js";
 import { createBot } from "./bot/index.js";
 import { EventBus } from "./services/event-bus.js";
+import { resolveTelegramConfig } from "./services/telegram-config.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -39,15 +40,24 @@ async function main(): Promise<void> {
   // Build Hono app
   const app = createApp({ runStore, graph, config, deps, eventBus });
 
-  // Start Telegram bot
-  const bot = createBot(
-    {
-      botToken: config.notifier.telegram.botToken,
-      chatId: config.notifier.telegram.chatId,
-    },
-    { runStore, graph, nodeDeps: deps }
+  // Start Telegram bot only when configured.
+  const telegram = resolveTelegramConfig(
+    config.notifier.telegram.botToken,
+    config.notifier.telegram.chatId
   );
-  bot.start();
+  let bot: ReturnType<typeof createBot> | undefined;
+  if (telegram.enabled) {
+    bot = createBot(
+      {
+        botToken: telegram.botToken,
+        chatId: telegram.chatId,
+      },
+      { runStore, graph, nodeDeps: deps }
+    );
+    bot.start();
+  } else {
+    console.warn(`[bot] Telegram polling disabled: ${telegram.reason}`);
+  }
 
   // Start HTTP server
   const server = serve(
@@ -66,7 +76,7 @@ async function main(): Promise<void> {
   // Graceful shutdown
   const shutdown = () => {
     console.log("Shutting down...");
-    bot.stop();
+    bot?.stop();
     cleanup();
     server.close(() => {
       console.log("Server closed.");

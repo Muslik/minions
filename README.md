@@ -172,12 +172,15 @@ Optional:
 | `ORCH_AGENT_MODEL` | `o3` | OpenAI model for agent nodes |
 | `ORCH_AUTH_DIR` | `~/.codex` | Directory containing `auth.json` |
 | `ORCH_DOCKER_IMAGE` | — | Docker image for validation (set in YAML) |
+| `ORCH_TELEGRAM_BOT_TOKEN` | — | Telegram bot token (required for polling and TG notifications) |
+| `ORCH_TELEGRAM_CHAT_ID` | — | Telegram chat id (required for polling and TG notifications) |
 | `ORCH_CONFLUENCE_BASE_URL` | — | Confluence instance (optional) |
 | `ORCH_CONFLUENCE_TOKEN` | — | Confluence token |
 | `ORCH_LOOP_BASE_URL` | — | Loop/Mattermost instance (optional) |
 | `ORCH_LOOP_TOKEN` | — | Loop token |
 
 All env vars override `config/orchestrator.yaml`. You can also edit the YAML directly.
+If Telegram token/chat id are missing or invalid, Telegram polling and Telegram notifier channel are disabled.
 
 ### 4. Knowledge registry
 

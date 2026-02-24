@@ -7,6 +7,7 @@ import { JiraService } from "../services/jira.js";
 import { BitbucketService } from "../services/bitbucket.js";
 import { NotifierService } from "../services/notifier.js";
 import { TelegramChannel } from "../services/telegram.js";
+import { resolveTelegramConfig } from "../services/telegram-config.js";
 import { OAuthTokenProvider } from "../services/auth.js";
 import { AgentFactory } from "../services/agent.js";
 import { VpnService } from "../services/vpn.js";
@@ -35,8 +36,17 @@ export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
   const docker = new DockerService(config.docker);
   const jira = new JiraService(config.jira);
   const bitbucket = new BitbucketService(config.bitbucket);
-  const telegramChannel = new TelegramChannel(config.notifier.telegram.botToken, config.notifier.telegram.chatId);
-  const notifier = new NotifierService([telegramChannel]);
+  const telegram = resolveTelegramConfig(
+    config.notifier.telegram.botToken,
+    config.notifier.telegram.chatId
+  );
+  if (!telegram.enabled) {
+    console.warn(`[telegram] Notifications disabled: ${telegram.reason}`);
+  }
+  const notifierChannels = telegram.enabled
+    ? [new TelegramChannel(telegram.botToken, telegram.chatId)]
+    : [];
+  const notifier = new NotifierService(notifierChannels);
 
   const authDir = config.agent.authDir.startsWith("~")
     ? config.agent.authDir.replace("~", process.env["HOME"] ?? "/root")

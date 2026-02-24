@@ -33,6 +33,8 @@ export interface TgUpdate {
 export interface TgGetUpdatesResult {
   ok: boolean;
   result: TgUpdate[];
+  error_code?: number;
+  description?: string;
 }
 
 export interface TgSendMessageResult {

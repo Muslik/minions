@@ -38,10 +38,21 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   set("jira", "token", e["ORCH_JIRA_TOKEN"]);
   set("bitbucket", "baseUrl", e["ORCH_BITBUCKET_BASE_URL"]);
   set("bitbucket", "token", e["ORCH_BITBUCKET_TOKEN"]);
-  if (e["ORCH_TELEGRAM_BOT_TOKEN"]) {
+  if (
+    e["ORCH_TELEGRAM_BOT_TOKEN"] !== undefined ||
+    e["ORCH_TELEGRAM_CHAT_ID"] !== undefined
+  ) {
     cfg["notifier"] ??= {};
     (cfg["notifier"] as Record<string, unknown>)["telegram"] ??= {};
-    ((cfg["notifier"] as Record<string, unknown>)["telegram"] as Record<string, unknown>)["botToken"] = e["ORCH_TELEGRAM_BOT_TOKEN"];
+    const tg = (cfg["notifier"] as Record<string, unknown>)[
+      "telegram"
+    ] as Record<string, unknown>;
+    if (e["ORCH_TELEGRAM_BOT_TOKEN"] !== undefined) {
+      tg["botToken"] = e["ORCH_TELEGRAM_BOT_TOKEN"];
+    }
+    if (e["ORCH_TELEGRAM_CHAT_ID"] !== undefined) {
+      tg["chatId"] = e["ORCH_TELEGRAM_CHAT_ID"];
+    }
   }
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
@@ -196,6 +207,35 @@ agent: {}
         delete process.env["ORCH_SERVER_PORT"];
       } else {
         process.env["ORCH_SERVER_PORT"] = originalPort;
+      }
+    }
+  });
+
+  it("env vars ORCH_TELEGRAM_BOT_TOKEN and ORCH_TELEGRAM_CHAT_ID override YAML notifier.telegram", () => {
+    const configPath = join(tmpDir, "telegram-override.yaml");
+    writeFileSync(configPath, VALID_YAML, "utf-8");
+
+    const originalBotToken = process.env["ORCH_TELEGRAM_BOT_TOKEN"];
+    const originalChatId = process.env["ORCH_TELEGRAM_CHAT_ID"];
+    try {
+      process.env["ORCH_TELEGRAM_BOT_TOKEN"] = "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabc";
+      process.env["ORCH_TELEGRAM_CHAT_ID"] = "-1001122334455";
+      const config = loadConfig(configPath);
+      assert.equal(
+        config.notifier.telegram.botToken,
+        "123456:ABCDEFGHIJKLMNOPQRSTUVWXYZabc"
+      );
+      assert.equal(config.notifier.telegram.chatId, "-1001122334455");
+    } finally {
+      if (originalBotToken === undefined) {
+        delete process.env["ORCH_TELEGRAM_BOT_TOKEN"];
+      } else {
+        process.env["ORCH_TELEGRAM_BOT_TOKEN"] = originalBotToken;
+      }
+      if (originalChatId === undefined) {
+        delete process.env["ORCH_TELEGRAM_CHAT_ID"];
+      } else {
+        process.env["ORCH_TELEGRAM_CHAT_ID"] = originalChatId;
       }
     }
   });

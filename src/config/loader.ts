@@ -29,10 +29,21 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   set("loop", "baseUrl", e["ORCH_LOOP_BASE_URL"]);
   set("loop", "token", e["ORCH_LOOP_TOKEN"]);
   // notifier.telegram — nested, handle manually
-  if (e["ORCH_TELEGRAM_BOT_TOKEN"]) {
+  if (
+    e["ORCH_TELEGRAM_BOT_TOKEN"] !== undefined ||
+    e["ORCH_TELEGRAM_CHAT_ID"] !== undefined
+  ) {
     cfg["notifier"] ??= {};
     (cfg["notifier"] as Record<string, unknown>)["telegram"] ??= {};
-    ((cfg["notifier"] as Record<string, unknown>)["telegram"] as Record<string, unknown>)["botToken"] = e["ORCH_TELEGRAM_BOT_TOKEN"];
+    const tg = (cfg["notifier"] as Record<string, unknown>)[
+      "telegram"
+    ] as Record<string, unknown>;
+    if (e["ORCH_TELEGRAM_BOT_TOKEN"] !== undefined) {
+      tg["botToken"] = e["ORCH_TELEGRAM_BOT_TOKEN"];
+    }
+    if (e["ORCH_TELEGRAM_CHAT_ID"] !== undefined) {
+      tg["chatId"] = e["ORCH_TELEGRAM_CHAT_ID"];
+    }
   }
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
