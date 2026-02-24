@@ -41,23 +41,34 @@ export function createValidateNode(deps: NodeDeps) {
         requestedNodeVersion: exactNodeVersion ?? null,
       });
 
-      const bootstrapScript = [
+      const bootstrapSteps = [
         "set -euo pipefail",
         `rm -rf ${SANDBOX_WORKDIR}`,
         `mkdir -p ${SANDBOX_WORKDIR}`,
         `cp -a ${SOURCE_WORKDIR}/. ${SANDBOX_WORKDIR}`,
         `cd ${SANDBOX_WORKDIR}`,
-        `rm -rf ${FNM_WORKDIR}`,
-        `mkdir -p ${FNM_WORKDIR}`,
-        `export FNM_DIR=${FNM_WORKDIR}`,
-        "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
-        ...(exactNodeVersion
-          ? [`fnm use --install-if-missing ${exactNodeVersion}`]
-          : []),
-        "corepack enable >/dev/null 2>&1 || true",
-        "node -v",
-        "pnpm install --frozen-lockfile --ignore-scripts",
-      ].join(" && ");
+      ];
+
+      if (exactNodeVersion) {
+        bootstrapSteps.push(
+          `rm -rf ${FNM_WORKDIR}`,
+          `mkdir -p ${FNM_WORKDIR}`,
+          `export FNM_DIR=${FNM_WORKDIR}`,
+          "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
+          `fnm install ${exactNodeVersion}`,
+          `fnm exec --using ${exactNodeVersion} node -v`,
+          `(fnm exec --using ${exactNodeVersion} corepack enable >/dev/null 2>&1 || true)`,
+          `fnm exec --using ${exactNodeVersion} pnpm install --frozen-lockfile --ignore-scripts`
+        );
+      } else {
+        bootstrapSteps.push(
+          "node -v",
+          "(corepack enable >/dev/null 2>&1 || true)",
+          "pnpm install --frozen-lockfile --ignore-scripts"
+        );
+      }
+
+      const bootstrapScript = bootstrapSteps.join(" && ");
 
       let bootstrap:
         | {
