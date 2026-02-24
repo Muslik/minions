@@ -285,7 +285,13 @@ describe("graph-lifecycle: individual node isolation", () => {
         ...mockDeps,
         docker: {
           withContainer: async (_p, _b, fn) => fn({} as unknown),
-          exec: async () => ({ stdout: "FAIL", stderr: "error details", exitCode: 1 }),
+          exec: async (_c, cmd) => {
+            const shell = cmd[2] ?? "";
+            if (typeof shell === "string" && shell.includes("pnpm install --frozen-lockfile")) {
+              return { stdout: "bootstrap ok", stderr: "", exitCode: 0 };
+            }
+            return { stdout: "FAIL", stderr: "error details", exitCode: 1 };
+          },
         },
       };
       const node = createValidateNode(failDeps);
