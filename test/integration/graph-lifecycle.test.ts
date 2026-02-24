@@ -1,5 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { RunStatus } from "../../src/domain/types.ts";
 import type { CodingState } from "../../src/domain/state.ts";
@@ -307,6 +311,63 @@ describe("graph-lifecycle: individual node isolation", () => {
       assert.equal(result.status, RunStatus.FINALIZING);
       assert.equal(result.reviewIterations, 1);
       assert.equal(result.error, undefined);
+    });
+
+    it("includes staged deletions in diff even without a commit", async () => {
+      const repoDir = mkdtempSync(join(tmpdir(), "reviewer-diff-"));
+      try {
+        execSync("git init -b master", { cwd: repoDir, stdio: ["ignore", "ignore", "ignore"] });
+        execSync("git config user.email test@example.com", { cwd: repoDir, stdio: ["ignore", "ignore", "ignore"] });
+        execSync("git config user.name Test User", { cwd: repoDir, stdio: ["ignore", "ignore", "ignore"] });
+
+        const stylesDir = join(repoDir, "src/styles");
+        const styleFile = join(stylesDir, "avia-mixins.scss");
+        mkdirSync(stylesDir, { recursive: true });
+        writeFileSync(styleFile, "@mixin demo {}\n");
+
+        execSync("git add -A", { cwd: repoDir, stdio: ["ignore", "ignore", "ignore"] });
+        execSync("git commit -m \"initial commit\"", { cwd: repoDir, stdio: ["ignore", "ignore", "ignore"] });
+
+        rmSync(styleFile);
+        rmSync(stylesDir, { recursive: true, force: true });
+
+        let capturedDiff = "";
+        const deps: NodeDeps = {
+          ...mockDeps,
+          agent: {
+            runAgent: async (_role, _worktreePath, _ctx, extra) => {
+              capturedDiff = extra?.diff ?? "";
+              return "REJECTED: expected for test";
+            },
+          },
+        };
+
+        const node = createReviewerNode(deps);
+        const state = makeState({
+          context: {
+            runId: "run-1",
+            ticketUrl: "https://jira.example.com/browse/TEST-1",
+            chatId: "chat-1",
+            requesterId: "user-1",
+            worktreePath: repoDir,
+            targetBranch: "master",
+          },
+          plan: "# Plan\n- remove styles",
+        });
+
+        const result = await node(state);
+
+        assert.equal(result.status, undefined);
+        assert.equal(result.reviewIterations, 1);
+        assert.ok(capturedDiff.length > 0, "reviewer should receive non-empty diff");
+        assert.match(
+          capturedDiff,
+          /diff --git a\/src\/styles\/avia-mixins\.scss b\/src\/styles\/avia-mixins\.scss/
+        );
+        assert.match(capturedDiff, /deleted file mode 100644/);
+      } finally {
+        rmSync(repoDir, { recursive: true, force: true });
+      }
     });
 
     it("returns an error when agent output contains REJECTED: reason", async () => {

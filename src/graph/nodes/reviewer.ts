@@ -10,27 +10,41 @@ function getDiff(worktreePath: string, targetBranch = "main"): string {
     execSync("git add -A", { cwd: worktreePath, stdio: ["pipe", "pipe", "pipe"] });
   } catch { /* ignore */ }
 
-  // Diff all changes from target branch (includes committed + staged)
+  // Use merge-base to include committed + staged/unstaged changes in one patch.
   try {
-    return execSync(`git diff ${targetBranch}...HEAD`, {
+    const mergeBase = execSync(`git merge-base ${targetBranch} HEAD`, {
+      cwd: worktreePath,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+
+    return execSync(`git diff ${mergeBase}`, {
       cwd: worktreePath,
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
   } catch {
-    // Fallback: diff staged + unstaged vs HEAD
+    // Fallback: committed-only diff from target branch tip.
     try {
-      return execSync("git diff HEAD", {
+      return execSync(`git diff ${targetBranch}...HEAD`, {
         cwd: worktreePath,
         encoding: "utf-8",
         stdio: ["pipe", "pipe", "pipe"],
       });
     } catch {
-      return "";
+      // Last fallback: diff staged + unstaged vs HEAD.
+      try {
+        return execSync("git diff HEAD", {
+          cwd: worktreePath,
+          encoding: "utf-8",
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch {
+        return "";
+      }
     }
   }
 }
-
 export function createReviewerNode(deps: NodeDeps) {
   return async function reviewerNode(
     state: CodingState
