@@ -54,7 +54,8 @@ const phases = computed(() => {
     } else if (e.type === 'error') {
       current.entries.push({ id: e.id, time, kind: 'error', text: String(d?.message ?? JSON.stringify(d)) })
     } else {
-      current.entries.push({ id: e.id, time, kind: 'other', text: e.type })
+      const detail = formatOtherEventDetail(d)
+      current.entries.push({ id: e.id, time, kind: 'other', text: e.type, detail })
     }
   }
 
@@ -99,6 +100,15 @@ function statusLabel(status: string): string {
 
 function toolCallCount(entries: ToolEntry[]): number {
   return entries.filter(e => e.kind === 'tool_call').length
+}
+
+function formatOtherEventDetail(data: Record<string, unknown> | undefined): string {
+  if (!data) return ''
+  try {
+    return JSON.stringify(data, null, 2).slice(0, 1500)
+  } catch {
+    return String(data)
+  }
 }
 </script>
 
@@ -178,7 +188,16 @@ function toolCallCount(entries: ToolEntry[]): number {
             </div>
 
             <!-- Other -->
-            <div v-else class="text-[hsl(var(--muted-foreground))]">{{ entry.text }}</div>
+            <div v-else class="min-w-0 flex-1">
+              <button class="flex items-center gap-1 cursor-pointer" @click="toggleEntry(entry.id)">
+                <span class="text-[hsl(var(--muted-foreground))]">{{ entry.text }}</span>
+                <span v-if="entry.detail" class="text-[hsl(var(--muted-foreground))]">{{ expandedEntries.has(entry.id) ? '▾' : '▸' }}</span>
+              </button>
+              <pre
+                v-if="expandedEntries.has(entry.id) && entry.detail"
+                class="mt-1 text-[10px] bg-[hsl(var(--card))] rounded p-2 overflow-x-auto max-h-40 whitespace-pre-wrap break-all text-[hsl(var(--muted-foreground))]"
+              >{{ entry.detail }}</pre>
+            </div>
           </div>
         </div>
       </div>
