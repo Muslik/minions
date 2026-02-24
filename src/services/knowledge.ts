@@ -48,6 +48,7 @@ const DEFAULT_VALIDATION_COMMANDS_BY_REPO: Record<string, string[]> = {
     "pnpm run lint:stylelint",
     "pnpm run lint:circular",
     "pnpm run typecheck",
+    "pnpm run dicts",
     "pnpm run test",
   ],
 };
