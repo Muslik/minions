@@ -1,14 +1,40 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, mkdirSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { execSync } from "child_process";
+import { createHash } from "crypto";
 
 const MAX_OUTPUT = 8 * 1024;
+const MAX_FULL_FILE_READ_BYTES = 64 * 1024;
+const DEFAULT_READ_CHUNK_LINES = 300;
 
 function truncate(text: string): string {
   if (text.length <= MAX_OUTPUT) return text;
   return text.slice(0, MAX_OUTPUT) + "\n... [truncated]";
+}
+
+type FileReadState = {
+  nextStartLine?: number;
+  fullyReadHash?: string;
+};
+
+function hashContent(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function readFileChunk(
+  lines: string[],
+  startLine?: number,
+  endLine?: number
+): { chunk: string; from: number; to: number; total: number } {
+  const total = lines.length;
+  const from = Math.max(1, startLine ?? 1);
+  const to = Math.min(total, endLine ?? Math.min(from + DEFAULT_READ_CHUNK_LINES - 1, total));
+  if (to < from) {
+    throw new Error(`Invalid range: startLine ${from} is after endLine ${to}`);
+  }
+  return { chunk: lines.slice(from - 1, to).join("\n"), from, to, total };
 }
 
 function assertWithinWorktree(
@@ -28,17 +54,68 @@ function assertWithinWorktree(
   return absTarget;
 }
 
-function createReadFileTool(worktreePath: string) {
+function createReadFileTool(worktreePath: string, readState: Map<string, FileReadState>) {
   return tool(
-    async ({ path }: { path: string }) => {
+    async ({
+      path,
+      startLine,
+      endLine,
+    }: {
+      path: string;
+      startLine?: number;
+      endLine?: number;
+    }) => {
       const resolved = assertWithinWorktree(path, worktreePath);
-      return truncate(readFileSync(resolved, "utf-8"));
+      const content = readFileSync(resolved, "utf-8");
+      const lines = content.split(/\r?\n/);
+
+      if (startLine !== undefined || endLine !== undefined) {
+        const range = readFileChunk(lines, startLine, endLine);
+        if (range.from === 1 && range.to === range.total) {
+          readState.set(resolved, {
+            nextStartLine: 1,
+            fullyReadHash: hashContent(content),
+          });
+        }
+        return range.chunk;
+      }
+
+      const bytes = Buffer.byteLength(content, "utf-8");
+      if (bytes <= MAX_FULL_FILE_READ_BYTES) {
+        readState.set(resolved, {
+          nextStartLine: 1,
+          fullyReadHash: hashContent(content),
+        });
+        return content;
+      }
+
+      const state = readState.get(resolved);
+      const from = Math.max(1, state?.nextStartLine ?? 1);
+      const range = readFileChunk(lines, from, from + DEFAULT_READ_CHUNK_LINES - 1);
+      const isLastChunk = range.to >= range.total;
+
+      readState.set(resolved, {
+        nextStartLine: isLastChunk ? 1 : range.to + 1,
+        fullyReadHash: isLastChunk ? hashContent(content) : undefined,
+      });
+
+      const tail = isLastChunk
+        ? "[auto-chunk] end of file reached; this file is now considered fully read in current session."
+        : `[auto-chunk] more available; call read_file again with the same path to continue from line ${range.to + 1}.`;
+
+      return [
+        `[auto-chunk] '${path}' lines ${range.from}-${range.to} of ${range.total} (${bytes} bytes).`,
+        range.chunk,
+        tail,
+      ].join("\n");
     },
     {
       name: "read_file",
-      description: "Read the contents of a file",
+      description: "Read file contents. Large files are auto-chunked across repeated calls on the same path.",
       schema: z.object({
         path: z.string().describe("Relative path to the file within the workspace"),
+        startLine: z.number().int().positive().optional().describe("Optional 1-based start line"),
+        endLine: z.number().int().positive().optional().describe("Optional 1-based end line"),
       }),
     }
   );
@@ -114,12 +191,30 @@ function createGrepTool(worktreePath: string) {
   );
 }
 
-function createWriteFileTool(worktreePath: string) {
+function createWriteFileTool(worktreePath: string, readState: Map<string, FileReadState>) {
   return tool(
     async ({ path, content }: { path: string; content: string }) => {
       const resolved = assertWithinWorktree(path, worktreePath);
+
+      if (existsSync(resolved)) {
+        const existingContent = readFileSync(resolved, "utf-8");
+        const existingBytes = Buffer.byteLength(existingContent, "utf-8");
+
+        if (existingBytes > MAX_FULL_FILE_READ_BYTES) {
+          const existingHash = hashContent(existingContent);
+          const state = readState.get(resolved);
+          if (!state?.fullyReadHash || state.fullyReadHash !== existingHash) {
+            throw new Error(
+              `Refusing to overwrite large file '${path}' (${existingBytes} bytes) before full read. ` +
+              "Call read_file repeatedly for this path until you receive '[auto-chunk] end of file reached', then retry."
+            );
+          }
+        }
+      }
+
       mkdirSync(dirname(resolved), { recursive: true });
       writeFileSync(resolved, content, "utf-8");
+      readState.set(resolved, { nextStartLine: 1, fullyReadHash: hashContent(content) });
       return `Written ${content.length} bytes to ${path}`;
     },
     {
@@ -164,8 +259,10 @@ function createBashTool(worktreePath: string) {
 export type AgentRole = "architect" | "coder" | "reviewer" | "clarify";
 
 export function createToolsForRole(role: AgentRole, worktreePath: string) {
+  const readState = new Map<string, FileReadState>();
+
   const readOnlyTools = [
-    createReadFileTool(worktreePath),
+    createReadFileTool(worktreePath, readState),
     createListDirectoryTool(worktreePath),
     createSearchFilesTool(worktreePath),
     createGrepTool(worktreePath),
@@ -174,7 +271,7 @@ export function createToolsForRole(role: AgentRole, worktreePath: string) {
   if (role === "coder") {
     return [
       ...readOnlyTools,
-      createWriteFileTool(worktreePath),
+      createWriteFileTool(worktreePath, readState),
       createBashTool(worktreePath),
     ];
   }

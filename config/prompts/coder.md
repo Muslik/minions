@@ -48,3 +48,4 @@ After implementation, these commands will be run to verify your work:
 5. Commit your changes with proper commit messages.
 6. Do NOT introduce changes outside the scope of the plan.
 7. Do NOT add unnecessary comments, docs, or refactoring.
+8. Before overwriting an existing file, ensure you read the complete file content. If read_file returns `[auto-chunk] more available`, keep calling read_file for the same path until `[auto-chunk] end of file reached`; do not rewrite from partial content.

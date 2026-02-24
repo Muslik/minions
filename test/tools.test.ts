@@ -67,6 +67,20 @@ describe("tool execution — read_file", () => {
     const result = await readFile.invoke({ path: "src/index.ts" });
     assert.equal(result, "console.log('hi');");
   });
+
+  it("reads a line range from a file", async () => {
+    writeFileSync(join(tmpDir, "chunked.txt"), "a\nb\nc\nd\ne", "utf-8");
+
+    const tools = createToolsForRole("architect", tmpDir);
+    const readFile = tools.find((t) => t.name === "read_file")!;
+    const result = await readFile.invoke({
+      path: "chunked.txt",
+      startLine: 2,
+      endLine: 4,
+    });
+
+    assert.equal(result, "b\nc\nd");
+  });
 });
 
 describe("tool execution — list_directory", () => {
@@ -160,17 +174,63 @@ describe("tool execution — bash (coder only)", () => {
   });
 });
 
-describe("output truncation", () => {
-  it("truncates output longer than 8KB", async () => {
-    // Create a large file > 8KB
-    const largeContent = "x".repeat(10_000);
-    writeFileSync(join(tmpDir, "large.txt"), largeContent, "utf-8");
+describe("large-file safety", () => {
+  it("auto-chunks large files across sequential read_file calls", async () => {
+    const lines = Array.from(
+      { length: 700 },
+      (_, i) => `line-${i + 1}-${"x".repeat(120)}`
+    );
+    writeFileSync(join(tmpDir, "large.txt"), lines.join("\n"), "utf-8");
 
     const tools = createToolsForRole("architect", tmpDir);
     const readFile = tools.find((t) => t.name === "read_file")!;
-    const result = await readFile.invoke({ path: "large.txt" });
 
-    assert.ok(result.length < largeContent.length, "output should be truncated");
-    assert.ok(result.includes("... [truncated]"));
+    const chunk1 = await readFile.invoke({ path: "large.txt" });
+    assert.ok(chunk1.includes("[auto-chunk] 'large.txt' lines 1-300"));
+    assert.ok(chunk1.includes("line-1-"));
+    assert.ok(chunk1.includes("[auto-chunk] more available"));
+
+    const chunk2 = await readFile.invoke({ path: "large.txt" });
+    assert.ok(chunk2.includes("[auto-chunk] 'large.txt' lines 301-600"));
+    assert.ok(chunk2.includes("line-301-"));
+    assert.ok(chunk2.includes("[auto-chunk] more available"));
+
+    const chunk3 = await readFile.invoke({ path: "large.txt" });
+    assert.ok(chunk3.includes("[auto-chunk] 'large.txt' lines 601-700"));
+    assert.ok(chunk3.includes("line-601-"));
+    assert.ok(chunk3.includes("[auto-chunk] end of file reached"));
+  });
+
+  it("blocks overwrite of large file until full read is completed", async () => {
+    const lines = Array.from(
+      { length: 700 },
+      (_, i) => `line-${i + 1}-${"y".repeat(120)}`
+    );
+    writeFileSync(join(tmpDir, "guarded.txt"), lines.join("\n"), "utf-8");
+
+    const tools = createToolsForRole("coder", tmpDir);
+    const readFile = tools.find((t) => t.name === "read_file")!;
+    const writeFile = tools.find((t) => t.name === "write_file")!;
+
+    await assert.rejects(
+      () => writeFile.invoke({ path: "guarded.txt", content: "short" }),
+      (err: Error) => {
+        assert.ok(err.message.includes("Refusing to overwrite large file"));
+        return true;
+      }
+    );
+
+    let last = "";
+    for (let i = 0; i < 5; i++) {
+      last = await readFile.invoke({ path: "guarded.txt" });
+      if (last.includes("[auto-chunk] end of file reached")) break;
+    }
+    assert.ok(last.includes("[auto-chunk] end of file reached"));
+
+    const result = await writeFile.invoke({
+      path: "guarded.txt",
+      content: "short",
+    });
+    assert.ok(result.includes("Written 5 bytes to guarded.txt"));
   });
 });
