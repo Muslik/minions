@@ -71,6 +71,7 @@ All tools are scoped to the git worktree with a path-traversal guard. Most tool 
 
 Validation still runs inside Docker using the image from `config.docker.image`. The worktree is mounted read-only and each command from `.minions.yaml` is executed sequentially.
 During validation, Minions copies `/workspace` into an internal writable sandbox (`/tmp/workspace`) and runs `pnpm install --frozen-lockfile --ignore-scripts` there before executing validation commands.
+If `package.json` contains an exact `engines.node` version (`x.y.z`), validator switches Node with `fnm` before install/checks and emits detailed validation runtime/bootstrap/command events to the run log.
 
 ## Project structure
 

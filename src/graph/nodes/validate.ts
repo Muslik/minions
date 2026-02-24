@@ -7,6 +7,8 @@ import type { NodeDeps } from "./deps.js";
 
 const SOURCE_WORKDIR = "/workspace";
 const SANDBOX_WORKDIR = "/tmp/workspace";
+const FNM_WORKDIR = "/tmp/fnm";
+const EVENT_LOG_LIMIT = 2000;
 
 export function createValidateNode(deps: NodeDeps) {
   return async function validateNode(
@@ -28,27 +30,46 @@ export function createValidateNode(deps: NodeDeps) {
     const binds = [`${worktreePath}:${SOURCE_WORKDIR}:ro`];
     const failures: string[] = [];
     const exactNodeVersion = resolveExactNodeVersion(worktreePath);
-    const pnpmExecutable = exactNodeVersion
-      ? `npx -y node@${exactNodeVersion} /usr/local/bin/pnpm`
-      : "pnpm";
+
+    deps.emitEvent(runId, "validation_runtime", {
+      strategy: exactNodeVersion ? "fnm_exact" : "container_default",
+      requestedNodeVersion: exactNodeVersion ?? null,
+    });
 
     await deps.docker.withContainer(profile, binds, async (container) => {
+      deps.emitEvent(runId, "validation_bootstrap_start", {
+        requestedNodeVersion: exactNodeVersion ?? null,
+      });
+
       const bootstrapScript = [
-        "set -eu",
+        "set -euo pipefail",
         `rm -rf ${SANDBOX_WORKDIR}`,
         `mkdir -p ${SANDBOX_WORKDIR}`,
         `cp -a ${SOURCE_WORKDIR}/. ${SANDBOX_WORKDIR}`,
         `cd ${SANDBOX_WORKDIR}`,
+        `rm -rf ${FNM_WORKDIR}`,
+        `mkdir -p ${FNM_WORKDIR}`,
+        `export FNM_DIR=${FNM_WORKDIR}`,
+        "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
+        ...(exactNodeVersion
+          ? [`fnm use --install-if-missing ${exactNodeVersion}`]
+          : []),
         "corepack enable >/dev/null 2>&1 || true",
-        `${pnpmExecutable} install --frozen-lockfile --ignore-scripts`,
+        "node -v",
+        "pnpm install --frozen-lockfile --ignore-scripts",
       ].join(" && ");
 
       const bootstrap = await deps.docker.exec(container, [
-        "sh",
-        "-c",
+        "bash",
+        "-lc",
         bootstrapScript,
       ]);
       if (bootstrap.exitCode !== 0) {
+        deps.emitEvent(runId, "validation_bootstrap_result", {
+          exitCode: bootstrap.exitCode,
+          stdout: truncateForEvent(bootstrap.stdout),
+          stderr: truncateForEvent(bootstrap.stderr),
+        });
         failures.push(
           [
             "Command: [bootstrap validation workspace]",
@@ -58,11 +79,22 @@ export function createValidateNode(deps: NodeDeps) {
         );
         return undefined;
       }
+      deps.emitEvent(runId, "validation_bootstrap_result", {
+        exitCode: bootstrap.exitCode,
+        stdout: truncateForEvent(bootstrap.stdout),
+        stderr: truncateForEvent(bootstrap.stderr),
+      });
 
       for (const cmd of validationCommands) {
-        const prepared = rewritePnpmCommand(cmd, pnpmExecutable);
-        const wrapped = `cd ${SANDBOX_WORKDIR} && ${prepared}`;
-        const result = await deps.docker.exec(container, ["sh", "-c", wrapped]);
+        deps.emitEvent(runId, "validation_command_start", { command: cmd });
+        const wrapped = `cd ${SANDBOX_WORKDIR} && ${cmd}`;
+        const result = await deps.docker.exec(container, ["bash", "-lc", wrapped]);
+        deps.emitEvent(runId, "validation_command_result", {
+          command: cmd,
+          exitCode: result.exitCode,
+          stdout: truncateForEvent(result.stdout),
+          stderr: truncateForEvent(result.stderr),
+        });
         if (result.exitCode !== 0) {
           failures.push(
             `Command: ${cmd}\nStdout: ${result.stdout}\nStderr: ${result.stderr}`
@@ -97,13 +129,7 @@ function resolveExactNodeVersion(worktreePath: string): string | undefined {
   }
 }
 
-function rewritePnpmCommand(command: string, pnpmExecutable: string): string {
-  if (pnpmExecutable === "pnpm") return command;
-  const match = command.match(
-    /^\s*((?:[A-Za-z_][A-Za-z0-9_]*=[^\s]+\s+)*)pnpm\b(.*)$/
-  );
-  if (!match) return command;
-  const envPrefix = match[1] ?? "";
-  const rest = match[2] ?? "";
-  return `${envPrefix}${pnpmExecutable}${rest}`;
+function truncateForEvent(text: string): string {
+  if (text.length <= EVENT_LOG_LIMIT) return text;
+  return text.slice(0, EVENT_LOG_LIMIT) + "...<truncated>";
 }
