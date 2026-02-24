@@ -92,7 +92,7 @@ function buildValidationScript(
       `rm -rf ${FNM_WORKDIR}`,
       `mkdir -p ${FNM_WORKDIR}`,
       `export FNM_DIR=${FNM_WORKDIR}`,
-      "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
+      'eval "$(fnm env --shell bash --fnm-dir "$FNM_DIR")"',
       `fnm install ${exactNodeVersion}`,
       `fnm use ${exactNodeVersion}`
     );
