@@ -127,6 +127,23 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
       return c.json({ error: "Active run exists", existingRun }, 409);
     }
 
+    const contextPatch = {
+      parentRunId: run.id,
+      jiraIssue: run.context.jiraIssue,
+      repoUrl: run.context.repoUrl,
+      targetBranch: run.context.targetBranch,
+      branchName: run.context.branchName,
+      validationCommands: run.context.validationCommands,
+      figmaLinks: run.context.figmaLinks,
+      projectKey: run.context.projectKey,
+      repoSlug: run.context.repoSlug,
+      confluencePages: run.context.confluencePages,
+      loopThreads: run.context.loopThreads,
+      repoDescription: run.context.repoDescription,
+      additionalRepos: run.context.additionalRepos,
+      repoConventions: run.context.repoConventions,
+    };
+
     const runId = launchRun(
       {
         ticketUrl: run.payload.ticketUrl,
@@ -136,14 +153,23 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
       runStore,
       graph,
       appDeps.deps,
-      mode === "reuse_plan"
-        ? {
-            plan: run.plan,
-            resumeAction: "approve",
-            resumeComment: comment?.trim() || undefined,
-          }
-        : undefined
+      {
+        contextPatch,
+        ...(mode === "reuse_plan"
+          ? {
+              plan: run.plan,
+              resumeAction: "approve" as const,
+              resumeComment: comment?.trim() || undefined,
+            }
+          : {}),
+      }
     );
+
+    runStore.cloneEvents(id, runId);
+    runStore.addEvent(runId, "status", {
+      message: `History copied from run ${id}`,
+      sourceRunId: id,
+    });
 
     return c.json({ runId, mode }, 202);
   });

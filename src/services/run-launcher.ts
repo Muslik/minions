@@ -1,4 +1,5 @@
 import { RunStatus } from "../domain/types.js";
+import type { RunContext } from "../domain/types.js";
 import type { RunStore } from "../store/runs.js";
 import type { NodeDeps } from "../graph/nodes/deps.js";
 import type { CompiledGraph } from "../api/server.js";
@@ -14,6 +15,7 @@ export interface LaunchRunSeed {
   plan?: string;
   resumeAction?: CodingState["resumeAction"];
   resumeComment?: string;
+  contextPatch?: Partial<RunContext>;
 }
 
 export function launchRun(
@@ -26,10 +28,22 @@ export function launchRun(
   const { ticketUrl, chatId, requesterId } = params;
   const runId = runStore.create({ ticketUrl, chatId, requesterId });
 
+  const initialContext: RunContext = {
+    ...(seed?.contextPatch ?? {}),
+    runId,
+    ticketUrl,
+    chatId,
+    requesterId,
+  };
+  runStore.updateContext(runId, initialContext);
+  if (seed?.plan) {
+    runStore.updatePlan(runId, seed.plan);
+  }
+
   const initialState: Record<string, unknown> = {
     runId,
     payload: { ticketUrl, chatId, requesterId },
-    context: { runId, ticketUrl, chatId, requesterId },
+    context: initialContext,
   };
   if (seed?.plan) initialState["plan"] = seed.plan;
   if (seed?.resumeAction) initialState["resumeAction"] = seed.resumeAction;

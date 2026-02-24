@@ -133,6 +133,14 @@ export class RunStore {
     return rows.map(r => ({ id: r.id, runId: r.run_id, type: r.type, data: JSON.parse(r.data), createdAt: r.created_at + "Z" }));
   }
 
+  cloneEvents(fromRunId: string, toRunId: string): void {
+    this.db
+      .prepare(
+        "INSERT INTO events (run_id, type, data, created_at) SELECT ?, type, data, created_at FROM events WHERE run_id = ? ORDER BY id"
+      )
+      .run(toRunId, fromRunId);
+  }
+
   findActiveByTicketUrl(ticketUrl: string): Run | undefined {
     const row = this.db.prepare(
       "SELECT * FROM runs WHERE json_extract(payload, '$.ticketUrl') = ? AND status NOT IN ('DONE', 'FAILED', 'ESCALATED') LIMIT 1"

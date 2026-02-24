@@ -46,6 +46,7 @@ export interface RunContext {
   ticketUrl: string;
   chatId: string;
   requesterId: string;
+  parentRunId?: string;
   jiraIssue?: JiraIssue;
   repoUrl?: string;
   targetBranch?: string;
