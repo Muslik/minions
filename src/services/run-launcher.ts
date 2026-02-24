@@ -2,6 +2,7 @@ import { RunStatus } from "../domain/types.js";
 import type { RunStore } from "../store/runs.js";
 import type { NodeDeps } from "../graph/nodes/deps.js";
 import type { CompiledGraph } from "../api/server.js";
+import type { CodingState } from "../domain/state.js";
 
 export interface LaunchRunParams {
   ticketUrl: string;
@@ -9,24 +10,33 @@ export interface LaunchRunParams {
   requesterId: string;
 }
 
+export interface LaunchRunSeed {
+  plan?: string;
+  resumeAction?: CodingState["resumeAction"];
+  resumeComment?: string;
+}
+
 export function launchRun(
   params: LaunchRunParams,
   runStore: RunStore,
   graph: CompiledGraph,
-  deps: NodeDeps
+  deps: NodeDeps,
+  seed?: LaunchRunSeed
 ): string {
   const { ticketUrl, chatId, requesterId } = params;
   const runId = runStore.create({ ticketUrl, chatId, requesterId });
 
+  const initialState: Record<string, unknown> = {
+    runId,
+    payload: { ticketUrl, chatId, requesterId },
+    context: { runId, ticketUrl, chatId, requesterId },
+  };
+  if (seed?.plan) initialState["plan"] = seed.plan;
+  if (seed?.resumeAction) initialState["resumeAction"] = seed.resumeAction;
+  if (seed?.resumeComment) initialState["resumeComment"] = seed.resumeComment;
+
   graph
-    .invoke(
-      {
-        runId,
-        payload: { ticketUrl, chatId, requesterId },
-        context: { runId, ticketUrl, chatId, requesterId },
-      },
-      { configurable: { thread_id: runId } }
-    )
+    .invoke(initialState, { configurable: { thread_id: runId } })
     .then((finalState) => {
       runStore.updateStatus(runId, finalState.status);
       if (finalState.context) {

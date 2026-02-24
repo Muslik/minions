@@ -13,6 +13,14 @@ export function createAwaitApprovalNode(deps: NodeDeps) {
   return async function awaitApprovalNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
+    // Rerun with reused plan: auto-approve and continue to coder.
+    if (state.resumeAction === "approve") {
+      return {
+        resumeAction: "approve",
+        resumeComment: state.resumeComment,
+      };
+    }
+
     const { runId, chatId, requesterId, ticketUrl, jiraIssue } = state.context;
     const ticketKey = jiraIssue?.key;
 

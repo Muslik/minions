@@ -11,6 +11,11 @@ const CreateRunSchema = z.object({
   requesterId: z.string().min(1).default("web"),
 });
 
+const RerunSchema = z.object({
+  mode: z.enum(["full", "reuse_plan"]).default("full"),
+  comment: z.string().optional(),
+});
+
 export type RunsAppDeps = AppDeps;
 
 export function runsRoutes(appDeps: RunsAppDeps): Hono {
@@ -92,6 +97,55 @@ export function runsRoutes(appDeps: RunsAppDeps): Hono {
     if (!run) return c.json({ error: "Not found" }, 404);
     runStore.delete(id);
     return new Response(null, { status: 204 });
+  });
+
+  app.post("/:id/rerun", async (c) => {
+    const id = c.req.param("id");
+    const run = runStore.get(id);
+    if (!run) return c.json({ error: "Not found" }, 404);
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      body = {};
+    }
+
+    const parsed = RerunSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: parsed.error.flatten() }, 400);
+    }
+
+    const { mode, comment } = parsed.data;
+
+    if (mode === "reuse_plan" && !run.plan?.trim()) {
+      return c.json({ error: "Cannot reuse plan: source run has no plan" }, 400);
+    }
+
+    const existingRun = appDeps.runStore.findActiveByTicketUrl(run.payload.ticketUrl);
+    if (existingRun && existingRun.id !== id) {
+      return c.json({ error: "Active run exists", existingRun }, 409);
+    }
+
+    const runId = launchRun(
+      {
+        ticketUrl: run.payload.ticketUrl,
+        chatId: run.payload.chatId,
+        requesterId: run.payload.requesterId,
+      },
+      runStore,
+      graph,
+      appDeps.deps,
+      mode === "reuse_plan"
+        ? {
+            plan: run.plan,
+            resumeAction: "approve",
+            resumeComment: comment?.trim() || undefined,
+          }
+        : undefined
+    );
+
+    return c.json({ runId, mode }, 202);
   });
 
   return app;

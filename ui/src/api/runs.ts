@@ -16,6 +16,16 @@ export function createRun(data: { ticketKey?: string; ticketUrl?: string; descri
   })
 }
 
+export function rerunRun(
+  id: string,
+  data: { mode?: 'full' | 'reuse_plan'; comment?: string } = {}
+): Promise<{ runId: string; mode: 'full' | 'reuse_plan' }> {
+  return apiFetch<{ runId: string; mode: 'full' | 'reuse_plan' }>(`/runs/${id}/rerun`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
 export function resumeRun(id: string, action: 'approve' | 'revise' | 'cancel' | 'answer', comment?: string, answers?: string[]): Promise<void> {
   return apiFetch(`/runs/${id}/resume`, {
     method: 'POST',

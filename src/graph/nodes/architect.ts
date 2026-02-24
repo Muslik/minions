@@ -10,6 +10,22 @@ export function createArchitectNode(deps: NodeDeps) {
 
     deps.syncStatus(runId, RunStatus.PLANNING);
 
+    // Rerun with reused plan: keep plan, skip architect generation.
+    if (state.plan?.trim() && state.resumeAction === "approve") {
+      deps.syncPlan(runId, state.plan);
+      deps.artifacts.saveArtifact(
+        deps.config.storage.artifactsDir,
+        runId,
+        "plan.md",
+        state.plan
+      );
+
+      return {
+        status: RunStatus.AWAITING_APPROVAL,
+        plan: state.plan,
+      };
+    }
+
     const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
 
     const extraVars: Record<string, string> = {};

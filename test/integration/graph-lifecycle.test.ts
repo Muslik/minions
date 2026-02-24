@@ -198,6 +198,38 @@ describe("graph-lifecycle: individual node isolation", () => {
       assert.equal(result.status, RunStatus.AWAITING_APPROVAL);
       assert.equal(result.plan, "# Plan\n- Fix the bug");
     });
+
+    it("reuses existing plan when rerun is pre-approved", async () => {
+      let architectCalled = false;
+      const deps: NodeDeps = {
+        ...mockDeps,
+        agent: {
+          runAgent: async (role) => {
+            if (role === "architect") architectCalled = true;
+            return "# Plan\n- Should not be used";
+          },
+        },
+      };
+
+      const node = createArchitectNode(deps);
+      const state = makeState({
+        context: {
+          runId: "run-1",
+          ticketUrl: "https://jira.example.com/browse/TEST-1",
+          chatId: "chat-1",
+          requesterId: "user-1",
+          worktreePath: "/tmp/worktree",
+        },
+        plan: "# Existing Plan\n- Reuse this",
+        resumeAction: "approve",
+      });
+
+      const result = await node(state);
+
+      assert.equal(architectCalled, false);
+      assert.equal(result.status, RunStatus.AWAITING_APPROVAL);
+      assert.equal(result.plan, "# Existing Plan\n- Reuse this");
+    });
   });
 
   describe("coder node", () => {

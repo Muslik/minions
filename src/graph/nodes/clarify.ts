@@ -6,6 +6,11 @@ export function createClarifyNode(deps: NodeDeps) {
   return async function clarifyNode(
     state: CodingState
   ): Promise<Partial<CodingState>> {
+    // Rerun with reused plan: skip clarification stage.
+    if (state.plan?.trim() && state.resumeAction === "approve") {
+      return { status: RunStatus.PLANNING, questions: undefined };
+    }
+
     const { runId, worktreePath } = state.context;
 
     const onEvent = (type: string, data: unknown) => deps.emitEvent(runId, type, data);
