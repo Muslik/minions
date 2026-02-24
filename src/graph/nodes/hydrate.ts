@@ -35,7 +35,10 @@ export function createHydrateNode(deps: NodeDeps) {
     const { reposDir, workspacesDir } = deps.config.storage;
 
     const mirrorPath = deps.git.ensureMirror(repoUrl, reposDir);
-    const branch = `minions/${jiraIssue.key}`;
+    const branch = deps.knowledge.formatBranch(
+      jiraIssue.key,
+      jiraIssue.summary || jiraIssue.key
+    );
     const worktreePath = deps.git.addWorktree(
       mirrorPath,
       branch,
@@ -97,6 +100,7 @@ export function createHydrateNode(deps: NodeDeps) {
         jiraIssue,
         repoUrl,
         targetBranch,
+        branchName: branch,
         worktreePath,
         mirrorPath,
         validationCommands,

@@ -84,6 +84,7 @@ const mockDeps: NodeDeps = {
       projectKey: "PROJ",
       repoSlug: "repo",
     }),
+    formatBranch: (ticketKey, summary) => `${ticketKey}-${summary.toLowerCase().replace(/\s+/g, "-")}`,
   },
   git: {
     ensureMirror: (_url, _dir) => "/tmp/mirror",
@@ -168,7 +169,10 @@ describe("graph-lifecycle: individual node isolation", () => {
     it("returns ESCALATED when knowledge cannot resolve a repo", async () => {
       const depsNoRepo: NodeDeps = {
         ...mockDeps,
-        knowledge: { resolveRepo: () => null },
+        knowledge: {
+          resolveRepo: () => null,
+          formatBranch: mockDeps.knowledge.formatBranch,
+        },
       };
       const node = createHydrateNode(depsNoRepo);
       const state = makeState();

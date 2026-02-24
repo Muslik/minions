@@ -149,9 +149,12 @@ export function finalizeAndPush(
   }
 
   try {
-    run(`git push origin ${branch}`, worktreePath);
+    run(`git -c remote.origin.mirror=false push origin ${branch}`, worktreePath);
   } catch {
     // Branch can be recreated from fresh target branch between runs.
-    run(`git push --force-with-lease origin ${branch}`, worktreePath);
+    run(
+      `git -c remote.origin.mirror=false push --force-with-lease origin ${branch}`,
+      worktreePath
+    );
   }
 }

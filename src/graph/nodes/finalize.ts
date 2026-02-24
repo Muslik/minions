@@ -10,6 +10,7 @@ export function createFinalizeNode(deps: NodeDeps) {
       runId,
       worktreePath,
       targetBranch,
+      branchName,
       jiraIssue,
       projectKey,
       repoSlug,
@@ -17,7 +18,7 @@ export function createFinalizeNode(deps: NodeDeps) {
 
     deps.syncStatus(runId, RunStatus.FINALIZING);
 
-    const branch = `minions/${jiraIssue?.key ?? state.runId}`;
+    const branch = branchName ?? `minions/${jiraIssue?.key ?? state.runId}`;
 
     deps.git.finalizeAndPush(worktreePath ?? "", branch, true, targetBranch ?? "main");
 

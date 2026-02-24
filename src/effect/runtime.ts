@@ -19,7 +19,7 @@ import {
   finalizeAndPush,
   getHeadCommit,
 } from "../services/git.js";
-import { loadRegistry, resolveRepo } from "../services/knowledge.js";
+import { loadRegistry, resolveRepo, formatBranch } from "../services/knowledge.js";
 import { saveArtifact } from "../services/artifacts.js";
 
 export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
@@ -69,6 +69,8 @@ export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
     },
     knowledge: {
       resolveRepo: (issue) => resolveRepo(registry, issue),
+      formatBranch: (ticketKey, summary) =>
+        formatBranch(registry.git, ticketKey, summary),
     },
     git: {
       ensureMirror: (url, dir) => ensureMirror(url, dir),

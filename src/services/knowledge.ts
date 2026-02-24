@@ -124,9 +124,19 @@ function findScopeRepos(
 // ─── Git format helpers ───
 
 export function formatBranch(git: GitConventions, ticketKey: string, shortDesc: string): string {
+  const normalized = shortDesc
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const safeDesc = normalized || "task";
+
   return git.branchFormat
     .replace("{{TICKET_KEY}}", ticketKey)
-    .replace("{{SHORT_DESCRIPTION}}", shortDesc.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
+    .replace("{{SHORT_DESCRIPTION}}", safeDesc)
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export function formatSquashCommit(git: GitConventions, ticketKey: string, summary: string): string {

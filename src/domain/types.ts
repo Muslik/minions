@@ -49,6 +49,7 @@ export interface RunContext {
   jiraIssue?: JiraIssue;
   repoUrl?: string;
   targetBranch?: string;
+  branchName?: string;
   worktreePath?: string;
   mirrorPath?: string;
   planMarkdown?: string;

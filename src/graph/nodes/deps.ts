@@ -15,6 +15,7 @@ export interface NodeDeps {
       repoDescription?: string;
       additionalRepos?: string[];
     } | null;
+    formatBranch(ticketKey: string, summary: string): string;
   };
   git: {
     ensureMirror(url: string, dir: string): string;
