@@ -48,6 +48,31 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
   set("agent", "baseUrl", e["ORCH_AGENT_BASE_URL"]);
+  // agent.recursionLimits — nested
+  if (
+    e["ORCH_AGENT_RECURSION_CLARIFY"] !== undefined ||
+    e["ORCH_AGENT_RECURSION_ARCHITECT"] !== undefined ||
+    e["ORCH_AGENT_RECURSION_CODER"] !== undefined ||
+    e["ORCH_AGENT_RECURSION_REVIEWER"] !== undefined
+  ) {
+    cfg["agent"] ??= {};
+    (cfg["agent"] as Record<string, unknown>)["recursionLimits"] ??= {};
+    const limits = (cfg["agent"] as Record<string, unknown>)[
+      "recursionLimits"
+    ] as Record<string, unknown>;
+    if (e["ORCH_AGENT_RECURSION_CLARIFY"] !== undefined) {
+      limits["clarify"] = Number(e["ORCH_AGENT_RECURSION_CLARIFY"]);
+    }
+    if (e["ORCH_AGENT_RECURSION_ARCHITECT"] !== undefined) {
+      limits["architect"] = Number(e["ORCH_AGENT_RECURSION_ARCHITECT"]);
+    }
+    if (e["ORCH_AGENT_RECURSION_CODER"] !== undefined) {
+      limits["coder"] = Number(e["ORCH_AGENT_RECURSION_CODER"]);
+    }
+    if (e["ORCH_AGENT_RECURSION_REVIEWER"] !== undefined) {
+      limits["reviewer"] = Number(e["ORCH_AGENT_RECURSION_REVIEWER"]);
+    }
+  }
 
   return cfg as Record<string, unknown>;
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Command } from "@langchain/langgraph";
 import { RunStatus } from "../../domain/types.js";
 import type { AppDeps } from "../server.js";
+import { classifyGraphFailure } from "../../services/graph-error.js";
 
 const ResumeBodySchema = z.object({
   action: z.enum(["approve", "revise", "cancel", "answer"]),
@@ -63,8 +64,12 @@ export function resumeRoutes(appDeps: ResumeAppDeps): Hono {
       })
       .catch((err: unknown) => {
         console.error(`Graph resume ${id} failed:`, err);
-        runStore.updateStatus(id, RunStatus.FAILED);
-        runStore.addEvent(id, "error", { message: String(err) });
+        const failure = classifyGraphFailure(err);
+        runStore.updateStatus(id, failure.runStatus);
+        runStore.addEvent(id, failure.eventType, {
+          message: failure.message,
+          ...(failure.errorCode ? { code: failure.errorCode } : {}),
+        });
       });
 
     return c.json({ runId: id, action });

@@ -55,7 +55,7 @@ AgentFactory.runAgent(role, worktreePath, context)
   ├── createToolsForRole(role, worktreePath) ← scoped tools
   ├── loadTemplate + renderTemplate          ← prompt from config/prompts/
   ├── createReactAgent({ llm, tools })       ← @langchain/langgraph/prebuilt
-  └── .invoke(messages, { recursionLimit })  ← clarify=80, architect=140, coder=80, reviewer=60
+  └── .invoke(messages, { recursionLimit })  ← clarify=80, architect=240, coder=120, reviewer=80 (configurable)
 ```
 
 **Tool sets by role:**
@@ -170,8 +170,12 @@ Optional:
 | Variable | Default | Description |
 |---|---|---|
 | `ORCH_SERVER_PORT` | `3000` | HTTP server port |
-| `ORCH_AGENT_MODEL` | `o3` | OpenAI model for agent nodes |
+| `ORCH_AGENT_MODEL` | `gpt-5.3-codex` | OpenAI model for agent nodes |
 | `ORCH_AUTH_DIR` | `~/.codex` | Directory containing `auth.json` |
+| `ORCH_AGENT_RECURSION_CLARIFY` | `80` | Max inner-agent recursion for clarify role |
+| `ORCH_AGENT_RECURSION_ARCHITECT` | `240` | Max inner-agent recursion for architect role |
+| `ORCH_AGENT_RECURSION_CODER` | `120` | Max inner-agent recursion for coder role |
+| `ORCH_AGENT_RECURSION_REVIEWER` | `80` | Max inner-agent recursion for reviewer role |
 | `ORCH_DOCKER_IMAGE` | — | Docker image for validation (set in YAML) |
 | `ORCH_TELEGRAM_BOT_TOKEN` | — | Telegram bot token (required for polling and TG notifications) |
 | `ORCH_TELEGRAM_CHAT_ID` | — | Telegram chat id (required for polling and TG notifications) |
@@ -215,7 +219,7 @@ conventions: |
 ```
 
 If `.minions.yaml` is missing, Minions uses repo defaults when available.  
-Current built-in fallback: `front-avia` -> `lint:eslint`, `lint:prettier`, `lint:stylelint`, `lint:circular`, `typecheck`, `test`.
+Current built-in fallback: `front-avia` -> `lint:eslint`, `lint:prettier`, `lint:stylelint`, `lint:circular`, `typecheck`, `dicts`, `test`.
 
 ### 6. Run
 

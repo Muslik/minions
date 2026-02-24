@@ -28,3 +28,8 @@ notifier:
 agent:
   model: "gpt-5.3-codex"
   authDir: "~/.codex"
+  recursionLimits:
+    clarify: 80
+    architect: 320
+    coder: 120
+    reviewer: 80

@@ -56,6 +56,31 @@ function mergeEnvVars(raw: Record<string, unknown>): Record<string, unknown> {
   }
   set("agent", "model", e["ORCH_AGENT_MODEL"]);
   set("agent", "authDir", e["ORCH_AUTH_DIR"]);
+  set("agent", "baseUrl", e["ORCH_AGENT_BASE_URL"]);
+  if (
+    e["ORCH_AGENT_RECURSION_CLARIFY"] !== undefined ||
+    e["ORCH_AGENT_RECURSION_ARCHITECT"] !== undefined ||
+    e["ORCH_AGENT_RECURSION_CODER"] !== undefined ||
+    e["ORCH_AGENT_RECURSION_REVIEWER"] !== undefined
+  ) {
+    cfg["agent"] ??= {};
+    (cfg["agent"] as Record<string, unknown>)["recursionLimits"] ??= {};
+    const limits = (cfg["agent"] as Record<string, unknown>)[
+      "recursionLimits"
+    ] as Record<string, unknown>;
+    if (e["ORCH_AGENT_RECURSION_CLARIFY"] !== undefined) {
+      limits["clarify"] = Number(e["ORCH_AGENT_RECURSION_CLARIFY"]);
+    }
+    if (e["ORCH_AGENT_RECURSION_ARCHITECT"] !== undefined) {
+      limits["architect"] = Number(e["ORCH_AGENT_RECURSION_ARCHITECT"]);
+    }
+    if (e["ORCH_AGENT_RECURSION_CODER"] !== undefined) {
+      limits["coder"] = Number(e["ORCH_AGENT_RECURSION_CODER"]);
+    }
+    if (e["ORCH_AGENT_RECURSION_REVIEWER"] !== undefined) {
+      limits["reviewer"] = Number(e["ORCH_AGENT_RECURSION_REVIEWER"]);
+    }
+  }
 
   return cfg as Record<string, unknown>;
 }
@@ -109,6 +134,7 @@ notifier:
 agent:
   model: "gpt-5.3-codex"
   authDir: "/opt/codex"
+  baseUrl: "https://example.com/codex"
 `;
 
 const MINIMAL_YAML = `
@@ -154,6 +180,7 @@ describe("Config loading", () => {
     assert.equal(config.notifier.telegram.botToken, "test-bot-token");
     assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "/opt/codex");
+    assert.equal(config.agent.baseUrl, "https://example.com/codex");
   });
 
   it("throws a ZodError when required fields are missing", () => {
@@ -254,6 +281,26 @@ agent: {}
     // agent defaults
     assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "~/.codex");
+    assert.equal(config.agent.baseUrl, "https://chatgpt.com/backend-api/codex");
+    assert.equal(config.agent.recursionLimits.architect, 240);
+  });
+
+  it("env var ORCH_AGENT_RECURSION_ARCHITECT overrides YAML recursion limit", () => {
+    const configPath = join(tmpDir, "agent-recursion-override.yaml");
+    writeFileSync(configPath, VALID_YAML, "utf-8");
+
+    const original = process.env["ORCH_AGENT_RECURSION_ARCHITECT"];
+    try {
+      process.env["ORCH_AGENT_RECURSION_ARCHITECT"] = "320";
+      const config = loadConfig(configPath);
+      assert.equal(config.agent.recursionLimits.architect, 320);
+    } finally {
+      if (original === undefined) {
+        delete process.env["ORCH_AGENT_RECURSION_ARCHITECT"];
+      } else {
+        process.env["ORCH_AGENT_RECURSION_ARCHITECT"] = original;
+      }
+    }
   });
 
   it("parses schema directly with OrchestratorConfigSchema", () => {
@@ -280,5 +327,7 @@ agent: {}
     assert.equal(config.server.port, 3000);
     assert.equal(config.agent.model, "gpt-5.3-codex");
     assert.equal(config.agent.authDir, "~/.codex");
+    assert.equal(config.agent.baseUrl, "https://chatgpt.com/backend-api/codex");
+    assert.equal(config.agent.recursionLimits.architect, 240);
   });
 });

@@ -1,9 +1,9 @@
-import { RunStatus } from "../domain/types.js";
 import type { RunContext } from "../domain/types.js";
 import type { RunStore } from "../store/runs.js";
 import type { NodeDeps } from "../graph/nodes/deps.js";
 import type { CompiledGraph } from "../api/server.js";
 import type { CodingState } from "../domain/state.js";
+import { classifyGraphFailure } from "./graph-error.js";
 
 export interface LaunchRunParams {
   ticketUrl: string;
@@ -65,12 +65,16 @@ export function launchRun(
     })
     .catch(async (err: unknown) => {
       console.error(`Graph run ${runId} failed:`, err);
-      runStore.updateStatus(runId, RunStatus.FAILED);
-      runStore.addEvent(runId, "error", { message: String(err) });
+      const failure = classifyGraphFailure(err);
+      runStore.updateStatus(runId, failure.runStatus);
+      runStore.addEvent(runId, failure.eventType, {
+        message: failure.message,
+        ...(failure.errorCode ? { code: failure.errorCode } : {}),
+      });
       await deps.notifier.notify({
         runId,
-        status: "failed",
-        message: String(err),
+        status: failure.notifyStatus,
+        message: failure.message,
         chatId,
         requesterId,
         ticketKey: ticketUrl.split("/").pop(),

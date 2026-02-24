@@ -51,10 +51,18 @@ export const LoopConfigSchema = z
   })
   .optional();
 
+export const AgentRecursionLimitsSchema = z.object({
+  clarify: z.number().int().positive().default(80),
+  architect: z.number().int().positive().default(240),
+  coder: z.number().int().positive().default(120),
+  reviewer: z.number().int().positive().default(80),
+});
+
 export const AgentConfigSchema = z.object({
   model: z.string().default("gpt-5.3-codex"),
   authDir: z.string().default("~/.codex"),
   baseUrl: z.string().default("https://chatgpt.com/backend-api/codex"),
+  recursionLimits: AgentRecursionLimitsSchema.default({}),
 });
 
 export const OrchestratorConfigSchema = z.object({
@@ -76,6 +84,7 @@ export type JiraConfig = z.infer<typeof JiraConfigSchema>;
 export type BitbucketConfig = z.infer<typeof BitbucketConfigSchema>;
 export type NotifierConfig = z.infer<typeof NotifierConfigSchema>;
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
+export type AgentRecursionLimits = z.infer<typeof AgentRecursionLimitsSchema>;
 export type ConfluenceConfig = z.infer<typeof ConfluenceConfigSchema>;
 export type LoopConfig = z.infer<typeof LoopConfigSchema>;
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;

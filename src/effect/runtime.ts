@@ -58,6 +58,7 @@ export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
     baseUrl: config.agent.baseUrl,
     tokenProvider,
     promptsDir,
+    recursionLimits: config.agent.recursionLimits,
   });
 
   const vpn = new VpnService();
