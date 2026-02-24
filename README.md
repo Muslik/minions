@@ -55,7 +55,7 @@ AgentFactory.runAgent(role, worktreePath, context)
   ├── createToolsForRole(role, worktreePath) ← scoped tools
   ├── loadTemplate + renderTemplate          ← prompt from config/prompts/
   ├── createReactAgent({ llm, tools })       ← @langchain/langgraph/prebuilt
-  └── .invoke(messages, { recursionLimit })  ← coder=80, others=40
+  └── .invoke(messages, { recursionLimit })  ← clarify=80, architect=140, coder=80, reviewer=60
 ```
 
 **Tool sets by role:**
@@ -65,7 +65,7 @@ AgentFactory.runAgent(role, worktreePath, context)
 | architect, reviewer | `read_file`, `list_directory`, `search_files`, `grep` |
 | coder | all above + `write_file`, `bash` |
 
-All tools are scoped to the git worktree with a path-traversal guard. Output is truncated to 8 KB.
+All tools are scoped to the git worktree with a path-traversal guard. Most tool output is truncated to 8 KB; `read_file` auto-chunks large files.
 
 ### Validation node
 
@@ -208,6 +208,9 @@ conventions: |
   - Use TypeScript strict mode
   - Follow existing naming patterns
 ```
+
+If `.minions.yaml` is missing, Minions uses repo defaults when available.  
+Current built-in fallback: `front-avia` -> `lint:eslint`, `lint:prettier`, `lint:stylelint`, `lint:circular`, `typecheck`, `test`.
 
 ### 6. Run
 

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveRepo } from "../src/services/knowledge.ts";
+import { resolveRepo, resolveValidationCommands } from "../src/services/knowledge.ts";
 import type { KnowledgeRegistry } from "../src/services/knowledge.ts";
 import type { JiraIssue } from "../src/domain/types.ts";
 
@@ -189,5 +189,41 @@ describe("resolveRepo — knowledge scoping", () => {
     assert.ok(result !== null);
     assert.equal(result.repoSlug, "back-components");
     assert.equal(result.additionalRepos, undefined);
+  });
+});
+
+describe("resolveValidationCommands", () => {
+  it("returns .minions validation commands when provided", () => {
+    const result = resolveValidationCommands("front-avia", {
+      validation: { commands: ["pnpm run custom:lint", "pnpm run custom:test"] },
+    });
+
+    assert.deepEqual(result, ["pnpm run custom:lint", "pnpm run custom:test"]);
+  });
+
+  it("falls back to front-avia defaults when repo config has no commands", () => {
+    const result = resolveValidationCommands("front-avia", null);
+
+    assert.deepEqual(result, [
+      "pnpm run lint:eslint",
+      "pnpm run lint:prettier",
+      "pnpm run lint:stylelint",
+      "pnpm run lint:circular",
+      "pnpm run typecheck",
+      "pnpm run test",
+    ]);
+  });
+
+  it("returns empty list for unknown repo without config", () => {
+    const result = resolveValidationCommands("unknown-repo", null);
+    assert.deepEqual(result, []);
+  });
+
+  it("trims and filters empty commands from repo config", () => {
+    const result = resolveValidationCommands("front-avia", {
+      validation: { commands: ["  pnpm run lint:eslint ", "", "   "] },
+    });
+
+    assert.deepEqual(result, ["pnpm run lint:eslint"]);
   });
 });

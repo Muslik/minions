@@ -19,10 +19,10 @@ function extractText(content: unknown): string {
 }
 
 const ROLE_CONFIG: Record<AgentRole, { recursionLimit: number; reasoning?: string }> = {
-  clarify:   { recursionLimit: 60 },
-  architect: { recursionLimit: 80, reasoning: "high" },
+  clarify:   { recursionLimit: 80 },
+  architect: { recursionLimit: 140, reasoning: "high" },
   coder:     { recursionLimit: 80 },
-  reviewer:  { recursionLimit: 40 },
+  reviewer:  { recursionLimit: 60 },
 };
 
 export class AgentFactory {

@@ -1,7 +1,7 @@
 import { RunStatus } from "../../domain/types.js";
 import type { CodingState } from "../../domain/state.js";
 import type { NodeDeps } from "./deps.js";
-import { loadRepoConfig } from "../../services/knowledge.js";
+import { loadRepoConfig, resolveValidationCommands } from "../../services/knowledge.js";
 
 const CONFLUENCE_RE = /https?:\/\/[^\s"')]*(?:\/wiki\/|\/confluence\/|[?&]pageId=)[^\s"')]+/g;
 const LOOP_RE = /https?:\/\/[^\s"')]*(?:onetwotrip\.loop\.ru|\/pl\/)[^\s"')]+/g;
@@ -48,7 +48,7 @@ export function createHydrateNode(deps: NodeDeps) {
 
     // Read per-repo .minions.yaml (lives inside the repo)
     const repoConfig = loadRepoConfig(worktreePath);
-    const validationCommands = repoConfig?.validation?.commands ?? [];
+    const validationCommands = resolveValidationCommands(repoSlug, repoConfig);
     const repoConventions = repoConfig?.conventions;
 
     // Collect text to search for external links

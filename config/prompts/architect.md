@@ -51,19 +51,21 @@ These commands will be run after implementation to verify correctness:
 
 ## Instructions
 
-**CRITICAL: You have a limited budget of tool calls. Be strategic, not exhaustive.**
-
-1. Start with a quick orientation: list the repo root, read the main config/entry files (max 3-5 files).
-2. Then read ONLY the files directly relevant to the ticket (max 5-10 files). Do NOT recursively explore the entire codebase.
-3. Once you understand enough to plan, STOP exploring and write the plan immediately.
-4. For each file to create or modify, describe the exact changes with enough detail for a developer to implement without guessing.
-5. If validation commands are provided, ensure the plan addresses what they check.
-6. Output a structured markdown plan. Nothing else.
-7. Make plan items verifiable by git diff and validation results. Do NOT require proof artifacts like command transcripts.
+1. Do a fast orientation first (repo root + key entry/config files), then investigate all modules directly touched by the ticket and their immediate dependencies/callers.
+2. Use targeted exploration (read/list/search/grep) to build confidence in impact scope. Avoid full-repo crawling, but do not stop early if uncertainty remains.
+3. Keep exploring until you can map each requirement to concrete file changes and validation outcomes.
+4. For every file to create/modify/delete, describe exact intended changes, edge cases, and integration points.
+5. Include tests/validation impact explicitly: what command(s) should pass and why those commands prove the requirement.
+6. Prefer plans that are implementable without guesswork and reviewable by git diff.
+7. Make plan items verifiable by code outcome and validation results. Do NOT require proof artifacts like command transcripts.
 8. Do NOT add plan requirements that depend on git tracking empty directories as explicit diff entries.
 
-**DO NOT:**
-- Grep the entire codebase for every keyword
-- Read files that are not directly related to the ticket
-- Explore more than 2 directory levels deep unless necessary
-- Make more than 20 tool calls total
+## Output Format
+
+Return markdown only with these sections:
+
+1. **Scope & Understanding**
+2. **Current-State Findings** (what exists now, with file references)
+3. **Implementation Plan** (numbered steps with exact file-level changes)
+4. **Validation Mapping** (requirement -> command(s) -> expected signal)
+5. **Risks / Open Questions** (only real blockers or meaningful risks)

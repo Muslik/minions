@@ -41,6 +41,17 @@ export interface RepoConfig {
   conventions?: string;
 }
 
+const DEFAULT_VALIDATION_COMMANDS_BY_REPO: Record<string, string[]> = {
+  "front-avia": [
+    "pnpm run lint:eslint",
+    "pnpm run lint:prettier",
+    "pnpm run lint:stylelint",
+    "pnpm run lint:circular",
+    "pnpm run typecheck",
+    "pnpm run test",
+  ],
+};
+
 // ─── Loaders ───
 
 export function loadRegistry(path: string): KnowledgeRegistry {
@@ -55,6 +66,18 @@ export function loadRepoConfig(worktreePath: string): RepoConfig | null {
   } catch {
     return null;
   }
+}
+
+export function resolveValidationCommands(
+  repoSlug: string,
+  repoConfig: RepoConfig | null
+): string[] {
+  const fromRepo = (repoConfig?.validation?.commands ?? [])
+    .map((c) => c.trim())
+    .filter(Boolean);
+
+  if (fromRepo.length > 0) return fromRepo;
+  return DEFAULT_VALIDATION_COMMANDS_BY_REPO[repoSlug] ?? [];
 }
 
 // ─── Resolution ───
