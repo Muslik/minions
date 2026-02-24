@@ -120,7 +120,7 @@ export function createValidateNode(deps: NodeDeps) {
 
       for (const cmd of validationCommands) {
         deps.emitEvent(runId, "validation_command_start", { command: cmd });
-        const wrapped = `cd ${SANDBOX_WORKDIR} && ${cmd}`;
+        const wrapped = buildValidationCommand(cmd, exactNodeVersion);
         let result:
           | {
               stdout: string;
@@ -202,4 +202,21 @@ function stringifyCause(cause: unknown): string {
   } catch {
     return String(cause);
   }
+}
+
+function buildValidationCommand(
+  cmd: string,
+  exactNodeVersion?: string
+): string {
+  const inWorkspace = `cd ${SANDBOX_WORKDIR} && ${cmd}`;
+  if (!exactNodeVersion) return inWorkspace;
+  return [
+    `export FNM_DIR=${FNM_WORKDIR}`,
+    "eval \"$(fnm env --shell bash --fnm-dir \\\"$FNM_DIR\\\")\"",
+    `fnm exec --using ${exactNodeVersion} bash -lc ${shellQuote(inWorkspace)}`,
+  ].join(" && ");
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
 }
