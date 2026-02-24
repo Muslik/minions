@@ -59,6 +59,8 @@ These commands will be run after implementation to verify correctness:
 4. For each file to create or modify, describe the exact changes with enough detail for a developer to implement without guessing.
 5. If validation commands are provided, ensure the plan addresses what they check.
 6. Output a structured markdown plan. Nothing else.
+7. Make plan items verifiable by git diff and validation results. Do NOT require proof artifacts like command transcripts.
+8. Do NOT add plan requirements that depend on git tracking empty directories as explicit diff entries.
 
 **DO NOT:**
 - Grep the entire codebase for every keyword
