@@ -21,6 +21,8 @@ export function createAwaitCiNode(deps: NodeDeps) {
       state.context;
     const ticketKey = jiraIssue?.key;
 
+    deps.syncStatus(runId, RunStatus.WAITING_FOR_CI);
+
     if (!commitHash) {
       return { status: RunStatus.DONE, ciStatus: "SUCCESSFUL" };
     }
@@ -87,6 +89,9 @@ export function createAwaitCiNode(deps: NodeDeps) {
     const failMsg = lastBuildUrl
       ? `CI failed: ${lastBuildUrl}`
       : "CI timed out waiting for build status";
+
+    // Keep run status consistent with observed CI failure while waiting for user action.
+    deps.syncStatus(runId, RunStatus.FAILED);
 
     await deps.notifier.notify({
       runId,
