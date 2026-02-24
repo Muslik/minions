@@ -50,6 +50,42 @@ export class DockerService {
     container: Dockerode.Container,
     cmd: string[]
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    let attempt = 0;
+    while (attempt < EXEC_MAX_ATTEMPTS) {
+      attempt += 1;
+      try {
+        const result = await this.execOnce(container, cmd);
+        if (attempt < EXEC_MAX_ATTEMPTS && isInitPipeFailureResult(result)) {
+          console.warn(
+            `[docker] transient exec init-p failure, retrying (${attempt}/${EXEC_MAX_ATTEMPTS - 1})`
+          );
+          await delay(EXEC_RETRY_DELAY_MS);
+          continue;
+        }
+        return result;
+      } catch (err) {
+        const dockerErr =
+          err instanceof DockerError
+            ? err
+            : new DockerError({ message: "exec failed", cause: err });
+        if (attempt < EXEC_MAX_ATTEMPTS && isInitPipeError(dockerErr)) {
+          console.warn(
+            `[docker] transient exec error, retrying (${attempt}/${EXEC_MAX_ATTEMPTS - 1}): ${dockerErr.message}`
+          );
+          await delay(EXEC_RETRY_DELAY_MS);
+          continue;
+        }
+        throw dockerErr;
+      }
+    }
+
+    throw new DockerError({ message: "exec failed after retries" });
+  }
+
+  private async execOnce(
+    container: Dockerode.Container,
+    cmd: string[]
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     try {
       const exec = await container.exec({
         Cmd: cmd,
@@ -136,4 +172,44 @@ function parseMemory(mem: string): number {
   if (lower.endsWith("m")) return parseFloat(lower) * 1024 * 1024;
   if (lower.endsWith("k")) return parseFloat(lower) * 1024;
   return parseInt(lower, 10);
+}
+
+const EXEC_MAX_ATTEMPTS = 2;
+const EXEC_RETRY_DELAY_MS = 200;
+
+function isInitPipeFailureResult(result: {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}): boolean {
+  if (result.exitCode !== 126) return false;
+  return isInitPipeText(`${result.stdout}\n${result.stderr}`);
+}
+
+function isInitPipeError(err: DockerError): boolean {
+  return isInitPipeText(`${err.message}\n${stringifyCause(err.cause)}`);
+}
+
+function isInitPipeText(text: string): boolean {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("init-p") &&
+    lower.includes("broken pipe") &&
+    lower.includes("unable to start container process")
+  );
+}
+
+function stringifyCause(cause: unknown): string {
+  if (!cause) return "";
+  if (typeof cause === "string") return cause;
+  if (cause instanceof Error) return cause.message;
+  try {
+    return JSON.stringify(cause);
+  } catch {
+    return String(cause);
+  }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
