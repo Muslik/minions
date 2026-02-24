@@ -21,12 +21,12 @@ function commitIdentityEnv(): NodeJS.ProcessEnv {
     process.env["ORCH_GIT_AUTHOR_NAME"]
     ?? process.env["GIT_AUTHOR_NAME"]
     ?? process.env["GIT_COMMITTER_NAME"]
-    ?? "Minions Bot";
+    ?? "minions";
   const email =
     process.env["ORCH_GIT_AUTHOR_EMAIL"]
     ?? process.env["GIT_AUTHOR_EMAIL"]
     ?? process.env["GIT_COMMITTER_EMAIL"]
-    ?? "minions-bot@localhost";
+    ?? "minions@onetwotrip.com";
 
   return {
     ...process.env,
