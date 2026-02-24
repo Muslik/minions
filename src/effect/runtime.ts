@@ -75,8 +75,8 @@ export function buildRuntime(config: OrchestratorConfig, runStore?: RunStore): {
       addWorktree: (mirror, branch, dir, targetBranch) =>
         addWorktree(mirror, branch, dir, targetBranch),
       removeWorktree: (path) => removeWorktree(path),
-      finalizeAndPush: (path, branch, squash) =>
-        finalizeAndPush(path, branch, squash),
+      finalizeAndPush: (path, branch, squash, targetBranch) =>
+        finalizeAndPush(path, branch, squash, targetBranch),
       getHeadCommit: (worktreePath) => getHeadCommit(worktreePath),
     },
     agent: {

@@ -15,7 +15,7 @@ export interface GitServiceInterface {
     targetBranch?: string
   ): string;
   removeWorktree(path: string): void;
-  finalizeAndPush(path: string, branch: string, squash?: boolean): void;
+  finalizeAndPush(path: string, branch: string, squash?: boolean, targetBranch?: string): void;
 }
 
 export class DockerTag extends Context.Tag("DockerTag")<
