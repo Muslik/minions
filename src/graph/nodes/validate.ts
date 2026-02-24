@@ -59,11 +59,33 @@ export function createValidateNode(deps: NodeDeps) {
         "pnpm install --frozen-lockfile --ignore-scripts",
       ].join(" && ");
 
-      const bootstrap = await deps.docker.exec(container, [
-        "bash",
-        "-lc",
-        bootstrapScript,
-      ]);
+      let bootstrap:
+        | {
+            stdout: string;
+            stderr: string;
+            exitCode: number;
+          }
+        | undefined;
+      try {
+        bootstrap = await deps.docker.exec(container, [
+          "bash",
+          "-lc",
+          bootstrapScript,
+        ]);
+      } catch (err) {
+        const detail = formatError(err);
+        deps.emitEvent(runId, "validation_bootstrap_result", {
+          exitCode: -1,
+          error: truncateForEvent(detail),
+        });
+        failures.push(
+          [
+            "Command: [bootstrap validation workspace]",
+            `Error: ${detail}`,
+          ].join("\n")
+        );
+        return undefined;
+      }
       if (bootstrap.exitCode !== 0) {
         deps.emitEvent(runId, "validation_bootstrap_result", {
           exitCode: bootstrap.exitCode,
@@ -88,7 +110,25 @@ export function createValidateNode(deps: NodeDeps) {
       for (const cmd of validationCommands) {
         deps.emitEvent(runId, "validation_command_start", { command: cmd });
         const wrapped = `cd ${SANDBOX_WORKDIR} && ${cmd}`;
-        const result = await deps.docker.exec(container, ["bash", "-lc", wrapped]);
+        let result:
+          | {
+              stdout: string;
+              stderr: string;
+              exitCode: number;
+            }
+          | undefined;
+        try {
+          result = await deps.docker.exec(container, ["bash", "-lc", wrapped]);
+        } catch (err) {
+          const detail = formatError(err);
+          deps.emitEvent(runId, "validation_command_result", {
+            command: cmd,
+            exitCode: -1,
+            error: truncateForEvent(detail),
+          });
+          failures.push(`Command: ${cmd}\nError: ${detail}`);
+          continue;
+        }
         deps.emitEvent(runId, "validation_command_result", {
           command: cmd,
           exitCode: result.exitCode,
@@ -132,4 +172,23 @@ function resolveExactNodeVersion(worktreePath: string): string | undefined {
 function truncateForEvent(text: string): string {
   if (text.length <= EVENT_LOG_LIMIT) return text;
   return text.slice(0, EVENT_LOG_LIMIT) + "...<truncated>";
+}
+
+function formatError(err: unknown): string {
+  if (err instanceof Error) {
+    const cause = stringifyCause((err as { cause?: unknown }).cause);
+    return cause ? `${err.message}; cause=${cause}` : err.message;
+  }
+  return stringifyCause(err);
+}
+
+function stringifyCause(cause: unknown): string {
+  if (!cause) return "";
+  if (typeof cause === "string") return cause;
+  if (cause instanceof Error) return cause.message;
+  try {
+    return JSON.stringify(cause);
+  } catch {
+    return String(cause);
+  }
 }

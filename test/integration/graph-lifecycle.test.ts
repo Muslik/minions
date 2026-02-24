@@ -314,6 +314,42 @@ describe("graph-lifecycle: individual node isolation", () => {
       assert.ok(result.error!.includes("npm test"), "error should contain the failed command");
     });
 
+    it("returns an error when docker.exec throws during bootstrap", async () => {
+      const failDeps: NodeDeps = {
+        ...mockDeps,
+        docker: {
+          withContainer: async (_p, _b, fn) => fn({} as unknown),
+          exec: async () => {
+            throw new Error("container is not running");
+          },
+        },
+      };
+      const node = createValidateNode(failDeps);
+      const state = makeState({
+        context: {
+          runId: "run-1",
+          ticketUrl: "https://jira.example.com/browse/TEST-1",
+          chatId: "chat-1",
+          requesterId: "user-1",
+          worktreePath: "/tmp/worktree",
+          validationCommands: ["npm test"],
+        },
+      });
+
+      const result = await node(state);
+
+      assert.equal(result.status, undefined);
+      assert.ok(result.error, "error should be set when bootstrap throws");
+      assert.ok(
+        result.error!.includes("bootstrap validation workspace"),
+        "error should include bootstrap command marker"
+      );
+      assert.ok(
+        result.error!.includes("container is not running"),
+        "error should include thrown error details"
+      );
+    });
+
     it("returns REVIEWING with no error when validationCommands is empty", async () => {
       const node = createValidateNode(mockDeps);
       const state = makeState({

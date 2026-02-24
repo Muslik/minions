@@ -24,6 +24,8 @@ export class DockerService {
       const memoryBytes = parseMemory(profile.memory);
       const container = await this.docker.createContainer({
         Image: this.image,
+        // Keep validator container running while we exec commands into it.
+        Cmd: ["sh", "-lc", "while true; do sleep 3600; done"],
         Tty: false,
         AttachStdout: true,
         AttachStderr: true,
@@ -138,7 +140,10 @@ export class DockerService {
       });
     } catch (err) {
       if (err instanceof DockerError) throw err;
-      throw new DockerError({ message: "exec failed", cause: err });
+      throw new DockerError({
+        message: `exec failed: ${stringifyCause(err)}`,
+        cause: err,
+      });
     }
   }
 
